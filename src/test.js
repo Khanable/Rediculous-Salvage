@@ -12,4 +12,4 @@ tree.forEach( e => document.body.appendChild(e) );
 import 'testShip';
 
 
-start();
+window.addEventListener('load', start);

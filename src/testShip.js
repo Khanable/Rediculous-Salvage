@@ -1,9 +1,10 @@
 import { test, module } from 'qunit';
 import { ShipSettings, Ship } from 'ship';
+import { RandomFactory } from 'random';
 
 module('Test Ship.js');
 
-test('ShipSettings', (assert) => {
+test('ShipSettings set/get', (assert) => {
 	let settings = new ShipSettings();
 	let defaults = settings.get();
 	let changeKey = Array.from(Object.keys(defaults)).pop();
@@ -15,6 +16,21 @@ test('ShipSettings', (assert) => {
 	assert.ok(changeResult[changeKey] == target, 'Setting changes work');
 });
 
-test('Ship', (assert) => {
-	let ship = new Ship();
+test('Ship.Create', (assert) => {
+	let settings = new ShipSettings();
+	let randomFactory = new RandomFactory(8);
+	let ship = new Ship(randomFactory);
+	let debug = ship.create(settings);
+
+	console.log('Ship.Create debug info');
+	console.log('vertices');
+	console.log(debug.vertices);
+	console.log('edges');
+	console.log(debug.edges);
+	console.log('centre');
+	console.log(debug.centre);
+	console.log('forward');
+	console.log(debug.forward);
+
+	assert.ok(ship.setup == true, 'Ship create works');
 });
