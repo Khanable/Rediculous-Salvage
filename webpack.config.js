@@ -6,7 +6,7 @@ const CleanWebpackPlugin = require('clean-webpack-plugin');
 module.exports = function(env, argv) {
 	if ( env.BUILDTARGET == 'main' ) {
 		return {
-			mode: 'production',
+			mode: 'development',
 			entry: [ './src/main.js' ],
 			output: {
 				filename: 'main.js',

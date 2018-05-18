@@ -1,5 +1,6 @@
 import { Engine, World, Bodies, Vertices, Vector } from 'matter-js';
-import { Object3D } from 'three';
+import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial } from 'three';
+import { Renderer } from 'render';
 
 export class ShipSettings {
 	constructor() {
@@ -72,7 +73,9 @@ class Circle {
 export class Ship {
 	constructor(randomFactory) {
 		this._random = randomFactory;
-		this._setup = false;
+		this._transform = null;
+
+		this._inited = false;
 	}
 
 	_getCircles(settings) {
@@ -136,12 +139,13 @@ export class Ship {
 		let rtnSymetry = null;
 		for(let vert of vertices) {
 			if ( !(vert.x == 0 && vert.y == 0) ) { 
-				let curForward = Vector.sub(centre, vert);
+				let curForward = Vector.sub(vert, centre);
 				let totals = [0, 0];
 				let dist = Vector.magnitudeSquared(curForward);
 				for(let compareVert of vertices) {
 					if ( compareVert != vert ) {
-						let side = Vector.cross(curForward, compareVert);
+						let toVert = Vector.sub(compareVert, centre);
+						let side = Vector.cross(curForward, toVert);
 						if ( side >= 0 ) {
 							totals[0]++;
 						}
@@ -158,7 +162,7 @@ export class Ship {
 				}
 			}
 		}
-		return rtn;
+		return Vector.normalise(rtn);
 	}
 
 	_getEdges(vertices) {
@@ -186,7 +190,7 @@ export class Ship {
 		return rtn;
 	}
 
-	create(shipSettings) {
+	_generateMesh(shipSettings, debug) {
 		let settings = shipSettings.get();
 		let circles = this._getCircles(settings);
 
@@ -195,18 +199,52 @@ export class Ship {
 		let centre = Vertices.centre(vertices);
 		let forward = this._getForward(vertices, centre);
 
-		this._setup = true;
-
-		return Object.freeze({
-			vertices: vertices,
-			edges: edges,
-			centre: centre,
-			forward: forward,
+		let geometry = new BufferGeometry();
+		let geometryVerts = new Float32Array(edges.length*2);
+		for(let i = 0; i < edges.length; i++) {
+			let edge = edges[i];
+			for(let j = 0; j < 2; j++) {
+				let vertIndex = (i*2)+j;
+				vertIndex*=3;
+				let point = edge.p1;
+				if ( j >= 1 ) {
+					point = edge.p2;
+				}
+				geometryVerts[vertIndex] = point.x;
+				geometryVerts[vertIndex+1] = point.y;
+				geometryVerts[vertIndex+2] = 0;
+			}
+		}
+		geometry.addAttribute('position', new BufferAttribute(geometryVerts, 3));
+		let material = new LineBasicMaterial({
+			color: 0xffffff,
+			linewidth: 1,
 		});
+		this._transform = new LineSegments( geometry, material );
+
+		//?setup transform for object centre and forward.
+
+		if ( debug != undefined ) {
+			debug.vertices = vertices;
+			debug.edges = edges;
+			debug.centre = centre;
+			debug.forward = forward;
+			Object.freeze(debug);
+		}
 	}
 
-	get setup() {
-		return this._setup;
+	init(shipSettings) {
+		if ( !this._inited ) { 
+			this._generateMesh(shipSettings);
+			this._transform = Renderer.add(this._transform);
+		}
+		else {
+			throw new Error('Already Inited');
+		}
+	}
+
+	get inited() {
+		return this._inited;
 	}
 
 }

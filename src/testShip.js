@@ -16,13 +16,14 @@ test('ShipSettings set/get', (assert) => {
 	assert.ok(changeResult[changeKey] == target, 'Setting changes work');
 });
 
-test('Ship.Create', (assert) => {
+test('Ship._generateMesh', (assert) => {
 	let settings = new ShipSettings();
 	let randomFactory = new RandomFactory(8);
 	let ship = new Ship(randomFactory);
-	let debug = ship.create(settings);
+	let debug = {};
+	ship._generateMesh(settings, debug);
 
-	console.log('Ship.Create debug info');
+	console.log('--Ship.Create debug info');
 	console.log('vertices');
 	console.log(debug.vertices);
 	console.log('edges');
@@ -31,6 +32,7 @@ test('Ship.Create', (assert) => {
 	console.log(debug.centre);
 	console.log('forward');
 	console.log(debug.forward);
+	console.log('--');
 
-	assert.ok(ship.setup == true, 'Ship create works');
+	assert.ok(true, 'Ship create works');
 });
