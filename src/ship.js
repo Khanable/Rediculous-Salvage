@@ -1,5 +1,5 @@
 import { Engine, World, Bodies, Vertices, Vector } from 'matter-js';
-import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial } from 'three';
+import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial, AxesHelper } from 'three';
 import { Renderer } from 'render';
 
 export class ShipSettings {
@@ -70,24 +70,6 @@ class Circle {
 	}
 }
 
-class Connection {
-	constructor(root) {
-		this._root = root;
-		this._connections = [];
-	}
-	get root() {
-		return this._root;
-	}
-
-	internalAdd(index) {
-		this._connections.push(index);
-	}
-	add(connection) {
-		this.internalAdd(connection.root);
-		connection.internalAdd(this.root);
-	}
-}
-
 export class Ship {
 	constructor(randomFactory) {
 		this._random = randomFactory;
@@ -151,31 +133,55 @@ export class Ship {
 		return rtn;
 	}
 
-	_getForwardAlt(vertices, edges, centre) {
-		let connections = [];
-		for(let edge of edges) {
-			let startConnection = null;
-			let endConnection = null;
-			for( let connection of connections ) {
-				if ( connection.root == edge.startIndex ) {
-					startConnection = connection;
-				}
-				if ( connection.root == edge.endIndex ) {
-					endConnection = connection;
-				}
-			}
-			if ( startConnection == null ) {
-				startConnection = new Connection(edge.startIndex);
-			}
-			if ( endConnection == null ) {
-				endConnection = new Connection(edge.endIndex);
-			}
+	_getForwardAlt(vertices, hullEdges, centre) {
+		let rtn = null;
+		let rtnDist = null;
+		let hullEdgeIndex = null;
 
-			startConnection.add(endConnection);
+		//Find furthest vert from centre
+		for(let i = 0; i < hullEdges.length; i++) {
+			let edge = hullEdges[i];
+			let p1 = vertices[edge.startIndex];
+			let linePoint = Vector.sub(p1, centre);
+			let distPoint = Vector.magnitude(linePoint);
+
+			if ( rtn == null || distPoint > rtnDist ) {
+				rtn = linePoint;
+				rtnDist = distPoint;
+				hullEdgeIndex = i;
+			}
 		}
 
-		//Do the checks and return to dir to the point.
+		//Consider edge midpoints on ether side of furthest vert from centre
+		let edge1 = hullEdges[hullEdgeIndex];
+		let pR = vertices[edge1.startIndex];
+		let p1 = vertices[edge1.endIndex];
+		let p2 = hullEdges.find( e => e.endIndex == edge1.startIndex ).startIndex;
+		p2 = vertices[p2];
 
+		let line1 = Vector.sub(p1, pR);
+		let line2 = Vector.sub(p2, pR);
+		let edge1Midpoint = Vector.add(pR, Vector.div(line1, 2));
+		let edge2Midpoint = Vector.add(pR, Vector.div(line2, 2));
+
+		let line1Mag = Vector.magnitude(line1);
+		let line2Mag = Vector.magnitude(line2);
+		let line1Midpoint = Vector.sub(edge1Midpoint, centre);
+		let line2Midpoint = Vector.sub(edge2Midpoint, centre);
+		let line1MidpointMag = Vector.magnitude(line1Midpoint);
+		let line2MidpointMag = Vector.magnitude(line2Midpoint);
+
+		let midPoint1DistAdj = line1MidpointMag+line1MidpointMag/line1Mag;
+		let midPoint2DistAdj = line2MidpointMag+line2MidpointMag/line2Mag;
+
+		if ( midPoint1DistAdj > rtnDist ) {
+			rtn = line1Midpoint;
+		}
+		else if ( midPoint2DistAdj > rtnDist ) {
+			rtn = line2Midpoint;
+		}
+
+		return Vector.normalise(rtn);
 	}
 
 	_getForward(vertices, centre) {
@@ -210,8 +216,9 @@ export class Ship {
 		return Vector.normalise(rtn);
 	}
 
-	_getEdges(vertices, hull) {
+	_getHullEdges(vertices, hull) {
 		let rtn = [];
+
 		let hullIndicies = new Array(hull.length).fill(null);
 		//Lookup the hull indices from vertices and sort to the order they appear in hull
 		for(let i = 0; i < vertices.length; i++) {
@@ -231,13 +238,19 @@ export class Ship {
 		//Wrap around
 		rtn.push(new Edge(hullIndicies[hullIndicies.length-1], hullIndicies[0]));
 
-		//Randomly join remaining.
+		return rtn;
+	}
+
+	_getEdges(vertices) {
+		let rtn = [];
+
+		//Randomly join.
 		let numNodes = vertices.length;
 		let joins = this._random.nextIntRange(0, numNodes*(numNodes-1)/2);
 		for(let i = 0; i < joins; i++) {
 			let fromIndex = this._random.nextIntRange(0, vertices.length-1);
 			let selectList = vertices.map( (e, i) =>  i ).filter( e => e != fromIndex );
-			let selectIndex =this._random.nextIntRange(0, selectList.length-1); 
+			let selectIndex = this._random.nextIntRange(0, selectList.length-1); 
 			let toIndex = selectList[selectIndex];
 			rtn.push(new Edge(fromIndex, toIndex));
 		}
@@ -250,14 +263,17 @@ export class Ship {
 		let circles = this._getCircles(settings);
 
 		let vertices = this._getVertices(circles);
+		//let vertices = [Vector.create(0, 0), Vector.create(0, 1), Vector.create(-0.8, -0.8), Vector.create(0.8, -0.8)]
 		let hull = Vertices.hull(vertices);
-		let edges = this._getEdges(vertices, hull);
+		let hullEdges = this._getHullEdges(vertices, hull);
+		let edges = this._getEdges(vertices).concat(hullEdges);
 		let centre = Vertices.centre(hull);
-		let forward = this._getForwardAlt(vertices, edges, centre);
+		let forward = this._getForwardAlt(vertices, hullEdges, centre);
 		//let forward = this._getForward(vertices, centre);
-
-		//Vertices.rotate(vertices, Vector.angle(Vector.create(0, 1), forward), Vector.create(0, 0));
 		Vertices.translate(vertices, Vector.neg(centre), 1);
+		console.log(forward);
+		let angle = Vector.angle(Vector.create(0, 0), Vector.create(0, 1)) - Vector.angle(Vector.create(0, 0), forward);
+		Vertices.rotate(vertices, angle, Vector.create(0, 0));
 
 		let geometry = new BufferGeometry();
 		let geometryVerts = new Float32Array(vertices.length*3);
@@ -281,6 +297,8 @@ export class Ship {
 			linewidth: 1,
 		});
 		this._transform = new LineSegments( geometry, material );
+		let axes = new AxesHelper(10);
+		Renderer.add(axes);
 
 		if ( debug != undefined ) {
 			debug.vertices = vertices;

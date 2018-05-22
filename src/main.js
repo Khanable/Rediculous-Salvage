@@ -10,7 +10,7 @@ const main = function() {
 	Renderer.init();
 
 
-	let randomFactory = new RandomFactory(1);
+	let randomFactory = new RandomFactory(0);
 	let settings = new ShipSettings();
 	let ship = new Ship(randomFactory);
 	ship.init(settings);
