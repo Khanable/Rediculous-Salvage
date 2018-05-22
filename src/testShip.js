@@ -18,7 +18,7 @@ test('ShipSettings set/get', (assert) => {
 
 test('Ship._generateMesh', (assert) => {
 	let settings = new ShipSettings();
-	let randomFactory = new RandomFactory(8);
+	let randomFactory = new RandomFactory(0);
 	let ship = new Ship(randomFactory);
 	let debug = {};
 	ship._generateMesh(settings, debug);

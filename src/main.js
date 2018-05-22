@@ -2,7 +2,7 @@ import { Ship, ShipSettings } from 'ship.js';
 import { RandomFactory } from 'random.js';
 import { Update } from 'update.js';
 import { Renderer } from 'render.js';
-import { Vector2 } from 'three';
+import { Vector3 } from 'three';
 
 
 const main = function() {
@@ -15,7 +15,7 @@ const main = function() {
 	let ship = new Ship(randomFactory);
 	ship.init(settings);
 
-	Renderer.setCameraPos(new Vector2(0, 0));
+	Renderer.setCameraPos(new Vector3(0, 0, 5));
 	Update.start();
 }
 window.addEventListener('load', main);

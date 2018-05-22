@@ -36,16 +36,16 @@ export class ShipSettings {
 }
 
 class Edge {
-	constructor(p1, p2) {
-		this._p1 = p1;
-		this._p2 = p2;
+	constructor(startIndex, endIndex) {
+		this._startIndex = startIndex;
+		this._endIndex = endIndex;
 	}
 
-	get p1() {
-		return this._p1;
+	get startIndex() {
+		return this._startIndex;
 	}
-	get p2() {
-		return this._p2;
+	get endIndex() {
+		return this._endIndex;
 	}
 }
 
@@ -67,6 +67,24 @@ class Circle {
 	}
 	set numNodes(v) {
 		this._numNodes = v;
+	}
+}
+
+class Connection {
+	constructor(root) {
+		this._root = root;
+		this._connections = [];
+	}
+	get root() {
+		return this._root;
+	}
+
+	internalAdd(index) {
+		this._connections.push(index);
+	}
+	add(connection) {
+		this.internalAdd(connection.root);
+		connection.internalAdd(this.root);
 	}
 }
 
@@ -133,6 +151,33 @@ export class Ship {
 		return rtn;
 	}
 
+	_getForwardAlt(vertices, edges, centre) {
+		let connections = [];
+		for(let edge of edges) {
+			let startConnection = null;
+			let endConnection = null;
+			for( let connection of connections ) {
+				if ( connection.root == edge.startIndex ) {
+					startConnection = connection;
+				}
+				if ( connection.root == edge.endIndex ) {
+					endConnection = connection;
+				}
+			}
+			if ( startConnection == null ) {
+				startConnection = new Connection(edge.startIndex);
+			}
+			if ( endConnection == null ) {
+				endConnection = new Connection(edge.endIndex);
+			}
+
+			startConnection.add(endConnection);
+		}
+
+		//Do the checks and return to dir to the point.
+
+	}
+
 	_getForward(vertices, centre) {
 		let rtn = null;
 		let rtnDist = null;
@@ -165,26 +210,36 @@ export class Ship {
 		return Vector.normalise(rtn);
 	}
 
-	_getEdges(vertices) {
+	_getEdges(vertices, hull) {
 		let rtn = [];
-		let hull = Vertices.hull(vertices);
-		let remaining = vertices.filter( e => !hull.find( h => h.x==e.x && h.y==e.y ) );
+		let hullIndicies = new Array(hull.length).fill(null);
+		//Lookup the hull indices from vertices and sort to the order they appear in hull
+		for(let i = 0; i < vertices.length; i++) {
+			let v = vertices[i];
+			let hullIndex = hull.findIndex(h => h.x==v.x && h.y==v.y);
+			if ( hullIndex != -1  ) {
+				hullIndicies[hullIndex] = i;
+			}
+		}
 
 		//Wrap connect the convex hull
-		for(let i = 1; i < hull.length; i++) {
-			let from = hull[i-1];
-			let to = hull[i];
-			rtn.push(new Edge(from, to));
+		for(let i = 1; i < hullIndicies.length; i++) {
+			let fromIndex = hullIndicies[i-1];
+			let toIndex = hullIndicies[i];
+			rtn.push(new Edge(fromIndex, toIndex));
 		}
+		//Wrap around
+		rtn.push(new Edge(hullIndicies[hullIndicies.length-1], hullIndicies[0]));
 
 		//Randomly join remaining.
 		let numNodes = vertices.length;
 		let joins = this._random.nextIntRange(0, numNodes*(numNodes-1)/2);
 		for(let i = 0; i < joins; i++) {
 			let fromIndex = this._random.nextIntRange(0, vertices.length-1);
-			let selectList = vertices.filter( (e, i) =>  i != fromIndex );
-			let toIndex = this._random.nextIntRange(0, selectList.length-1);
-			rtn.push(new Edge(vertices[fromIndex], selectList[toIndex]));
+			let selectList = vertices.map( (e, i) =>  i ).filter( e => e != fromIndex );
+			let selectIndex =this._random.nextIntRange(0, selectList.length-1); 
+			let toIndex = selectList[selectIndex];
+			rtn.push(new Edge(fromIndex, toIndex));
 		}
 
 		return rtn;
@@ -195,34 +250,37 @@ export class Ship {
 		let circles = this._getCircles(settings);
 
 		let vertices = this._getVertices(circles);
-		let edges = this._getEdges(vertices);
-		let centre = Vertices.centre(vertices);
-		let forward = this._getForward(vertices, centre);
+		let hull = Vertices.hull(vertices);
+		let edges = this._getEdges(vertices, hull);
+		let centre = Vertices.centre(hull);
+		let forward = this._getForwardAlt(vertices, edges, centre);
+		//let forward = this._getForward(vertices, centre);
+
+		//Vertices.rotate(vertices, Vector.angle(Vector.create(0, 1), forward), Vector.create(0, 0));
+		Vertices.translate(vertices, Vector.neg(centre), 1);
 
 		let geometry = new BufferGeometry();
-		let geometryVerts = new Float32Array(edges.length*2);
-		for(let i = 0; i < edges.length; i++) {
-			let edge = edges[i];
-			for(let j = 0; j < 2; j++) {
-				let vertIndex = (i*2)+j;
-				vertIndex*=3;
-				let point = edge.p1;
-				if ( j >= 1 ) {
-					point = edge.p2;
-				}
-				geometryVerts[vertIndex] = point.x;
-				geometryVerts[vertIndex+1] = point.y;
-				geometryVerts[vertIndex+2] = 0;
-			}
-		}
+		let geometryVerts = new Float32Array(vertices.length*3);
+		let geometryIndices = new Array(edges.length*2).fill(null);
+		vertices.forEach( (e, i) => {
+			let index = i*3;
+			geometryVerts[index] = e.x;
+			geometryVerts[index+1] = e.y;
+			geometryVerts[index+2] = 0;
+		});
+		edges.forEach( (e, i) => {
+			let index = i*2;
+			geometryIndices[index] = e.startIndex;
+			geometryIndices[index+1] = e.endIndex;
+		});
 		geometry.addAttribute('position', new BufferAttribute(geometryVerts, 3));
+		geometry.setIndex(geometryIndices);
+
 		let material = new LineBasicMaterial({
 			color: 0xffffff,
 			linewidth: 1,
 		});
 		this._transform = new LineSegments( geometry, material );
-
-		//?setup transform for object centre and forward.
 
 		if ( debug != undefined ) {
 			debug.vertices = vertices;
