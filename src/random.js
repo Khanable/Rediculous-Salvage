@@ -2,6 +2,9 @@ import { Chance } from 'chance';
 
 export class RandomFactory {
 	constructor(seed) {
+		if ( seed == undefined ) {
+			seed = 0;
+		}
 		this._chance = new Chance(seed);
 	}
 

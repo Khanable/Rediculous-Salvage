@@ -1,6 +1,7 @@
 import { Engine, World, Bodies, Vertices, Vector } from 'matter-js';
 import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial, AxesHelper } from 'three';
-import { Renderer } from 'render';
+import { Renderer } from 'render.js';
+import { Decorate, IsInited } from 'util.js';
 
 export class ShipSettings {
 	constructor() {
@@ -133,7 +134,7 @@ export class Ship {
 		return rtn;
 	}
 
-	_getForwardAlt(vertices, hullEdges, centre) {
+	_getForward(vertices, hullEdges, centre) {
 		let rtn = null;
 		let rtnDist = null;
 		let hullEdgeIndex = null;
@@ -184,37 +185,37 @@ export class Ship {
 		return Vector.normalise(rtn);
 	}
 
-	_getForward(vertices, centre) {
-		let rtn = null;
-		let rtnDist = null;
-		let rtnSymetry = null;
-		for(let vert of vertices) {
-			if ( !(vert.x == 0 && vert.y == 0) ) { 
-				let curForward = Vector.sub(vert, centre);
-				let totals = [0, 0];
-				let dist = Vector.magnitudeSquared(curForward);
-				for(let compareVert of vertices) {
-					if ( compareVert != vert ) {
-						let toVert = Vector.sub(compareVert, centre);
-						let side = Vector.cross(curForward, toVert);
-						if ( side >= 0 ) {
-							totals[0]++;
-						}
-						else {
-							totals[1]++;
-						}
-					}
-				}
-				let symetry = Math.abs(totals[0] - totals[1]);
-				if ( rtn == null || symetry < rtnSymetry || (symetry == rtnSymetry && dist > rtnDist) ) {
-					rtn = curForward;
-					rtnDist = dist;
-					rtnSymetry = symetry;
-				}
-			}
-		}
-		return Vector.normalise(rtn);
-	}
+	//_getForward(vertices, centre) {
+	//	let rtn = null;
+	//	let rtnDist = null;
+	//	let rtnSymetry = null;
+	//	for(let vert of vertices) {
+	//		if ( !(vert.x == 0 && vert.y == 0) ) { 
+	//			let curForward = Vector.sub(vert, centre);
+	//			let totals = [0, 0];
+	//			let dist = Vector.magnitudeSquared(curForward);
+	//			for(let compareVert of vertices) {
+	//				if ( compareVert != vert ) {
+	//					let toVert = Vector.sub(compareVert, centre);
+	//					let side = Vector.cross(curForward, toVert);
+	//					if ( side >= 0 ) {
+	//						totals[0]++;
+	//					}
+	//					else {
+	//						totals[1]++;
+	//					}
+	//				}
+	//			}
+	//			let symetry = Math.abs(totals[0] - totals[1]);
+	//			if ( rtn == null || symetry < rtnSymetry || (symetry == rtnSymetry && dist > rtnDist) ) {
+	//				rtn = curForward;
+	//				rtnDist = dist;
+	//				rtnSymetry = symetry;
+	//			}
+	//		}
+	//	}
+	//	return Vector.normalise(rtn);
+	//}
 
 	_getHullEdges(vertices, hull) {
 		let rtn = [];
@@ -266,25 +267,26 @@ export class Ship {
 		//let vertices = [Vector.create(0, 0), Vector.create(0, 1), Vector.create(-0.8, -0.8), Vector.create(0.8, -0.8)]
 		let hull = Vertices.hull(vertices);
 		let hullEdges = this._getHullEdges(vertices, hull);
-		let edges = this._getEdges(vertices).concat(hullEdges);
+		let edges = this._getEdges(vertices);
 		let centre = Vertices.centre(hull);
-		let forward = this._getForwardAlt(vertices, hullEdges, centre);
-		//let forward = this._getForward(vertices, centre);
-		Vertices.translate(vertices, Vector.neg(centre), 1);
-		console.log(forward);
+		let forward = this._getForward(vertices, hullEdges, centre);
+		let centreAlignedVertices = Array.from(vertices);
+		Vertices.translate(centreAlignedVertices, Vector.neg(centre), 1);
 		let angle = Vector.angle(Vector.create(0, 0), Vector.create(0, 1)) - Vector.angle(Vector.create(0, 0), forward);
-		Vertices.rotate(vertices, angle, Vector.create(0, 0));
+		let forwardAlignedVertices = Array.from(centreAlignedVertices);
+		Vertices.rotate(forwardAlignedVertices, angle, Vector.create(0, 0));
 
 		let geometry = new BufferGeometry();
 		let geometryVerts = new Float32Array(vertices.length*3);
-		let geometryIndices = new Array(edges.length*2).fill(null);
+		let allEdges = edges.concat(hullEdges);
+		let geometryIndices = new Array(allEdges.length*2).fill(null);
 		vertices.forEach( (e, i) => {
 			let index = i*3;
 			geometryVerts[index] = e.x;
 			geometryVerts[index+1] = e.y;
 			geometryVerts[index+2] = 0;
 		});
-		edges.forEach( (e, i) => {
+		allEdges.forEach( (e, i) => {
 			let index = i*2;
 			geometryIndices[index] = e.startIndex;
 			geometryIndices[index+1] = e.endIndex;
@@ -297,14 +299,17 @@ export class Ship {
 			linewidth: 1,
 		});
 		this._transform = new LineSegments( geometry, material );
-		let axes = new AxesHelper(10);
-		Renderer.add(axes);
 
 		if ( debug != undefined ) {
+			debug.circles = circles;
 			debug.vertices = vertices;
+			debug.hull = hull;
+			debug.hullEdges = hullEdges;
 			debug.edges = edges;
 			debug.centre = centre;
 			debug.forward = forward;
+			debug.centreAlignedVertices = centreAlignedVertices; 
+			debug.forwardAlignedVertices = forwardAlignedVertices;
 			Object.freeze(debug);
 		}
 	}
@@ -313,10 +318,15 @@ export class Ship {
 		if ( !this._inited ) { 
 			this._generateMesh(shipSettings);
 			this._transform = Renderer.add(this._transform);
+			this._inited = true;
 		}
 		else {
 			throw new Error('Already Inited');
 		}
+	}
+
+	destroy() {
+		Renderer.remove(this._transform);
 	}
 
 	get inited() {
@@ -324,3 +334,4 @@ export class Ship {
 	}
 
 }
+Ship.prototype.destroy = Decorate(Ship.prototype.destroy, IsInited);

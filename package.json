@@ -17,7 +17,9 @@
   "scripts": {
     "startTest": "webpack-dev-server --env.BUILDTARGET=test",
     "startMain": "webpack-dev-server --env.BUILDTARGET=main",
+    "startViewer": "webpack-dev-server --env.BUILDTARGET=viewer",
     "buildTest": "wepback --env.BUILDTARGET=test",
-    "buildMain": "wepback --env.BUILDTARGET=main"
+    "buildMain": "wepback --env.BUILDTARGET=main",
+    "buildViewer": "webpack --env.BUILDTARGET=viewer"
   }
 }

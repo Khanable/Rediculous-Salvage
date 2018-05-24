@@ -14,10 +14,12 @@ class _Renderer {
 
 	init() {
 		if ( !this._inited ) {
+			document.body.setAttribute('style', 'margin:0px;');
 			this._renderer = new WebGLRenderer();
 			this._scene = new Scene();
 			this._camera = new OrthographicCamera();
 			this._scene.add(this._camera);
+			this._renderer.domElement.setAttribute('style', 'display:block;');
 			document.body.appendChild(this._renderer.domElement);
 
 			window.addEventListener('resize', this._resize.bind(this));
