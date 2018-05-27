@@ -2,8 +2,8 @@ import { Ship, ShipSettings } from 'ship.js';
 import { RandomFactory } from 'random.js';
 import { Update } from 'update.js';
 import { Renderer } from 'render.js';
-import { Vector3 } from 'three';
-import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, EdgesLoader, CentreLoader } from 'shipViewerLoaders.js';
+import { Vector3, AxesHelper } from 'three';
+import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, EdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
 import 'string.js';
 
 let shipDebug = null;
@@ -17,8 +17,6 @@ const stages = [
 	'Edges',
 	'Centre',
 	'Forward',
-	'CentreAlignedVertices',
-	'ForwardAlignedVertices',
 ];
 const stagesEnum = {}
 const stageLoaders = [
@@ -28,6 +26,7 @@ const stageLoaders = [
 	new HullEdgesLoader(),
 	new EdgesLoader(),
 	new CentreLoader(),
+	new ForwardLoader(),
 ];
 
 
@@ -186,6 +185,9 @@ const main = function() {
 	Renderer.init();
 
 	Renderer.setCameraPos(new Vector3(0, 0, 5));
+	let axes = new AxesHelper(10);
+	axes = Renderer.add(axes);
+	axes.position.set(0, 0, -99);
 	Update.start();
 
 	generateShip(curSeed);

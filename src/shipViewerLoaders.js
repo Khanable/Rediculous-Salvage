@@ -1,6 +1,10 @@
 import { Renderer } from 'render.js';
 import { Decorate } from 'util.js';
-import { LineLoop, BufferGeometry, BufferAttribute, LineBasicMaterial, PointsMaterial, Points, LineSegments } from 'three';
+import { LineLoop, BufferGeometry, BufferAttribute, LineBasicMaterial, PointsMaterial, Points, LineSegments, BoxBufferGeometry, MeshBasicMaterial, Mesh } from 'three';
+import { Vector } from 'matter-js';
+
+let pointSize = 0.04;
+pointSize = 1/pointSize;
 
 const StateFalseCheck = function(func, args) {
 	if ( !this._loaded ) {
@@ -25,9 +29,9 @@ export class CirclesLoader {
 	constructor() {
 		this._loaded = false;
 		this._transforms = null;
-		this._color = 0xffff00;
+		this._color = 0xffffff;
 		this._segments = 30;
-		this._depth = 0;
+		this._depth = 20;
 	}
 
 	load(debug) {
@@ -42,7 +46,7 @@ export class CirclesLoader {
 				let theta = (i/this._segments)*Math.PI*2;
 				vertices[vIndex] = circle.centreDistance*Math.sin(theta);
 				vertices[vIndex+1] = circle.centreDistance*Math.cos(theta);
-				vertices[vIndex+2] = this._depth;
+				vertices[vIndex+2] = -this._depth;
 			}
 			geometry.addAttribute('position', new BufferAttribute(vertices, 3));
 			let mesh = new LineLoop(geometry, new LineBasicMaterial({color: this._color}));
@@ -70,14 +74,14 @@ CirclesLoader.prototype.unload = Decorate(CirclesLoader.prototype.unload, StateT
 export class VerticesLoader {
 	constructor() {
 		this._loaded = false;
-		this._size = 0.08;
 		this._color = 0xff0000;
 		this._transform = null;
-		this._depth = 1;
+		this._depth = 19;
+		this._size = this._depth/pointSize;
 	}
 
 	load(debug) {
-		let vertices = debug.vertices;
+		let vertices = debug.preTransformVertices;
 		let geometry = new BufferGeometry();
 		let geometryVertices = new Float32Array(vertices.length*3);
 
@@ -85,7 +89,7 @@ export class VerticesLoader {
 			let vIndex = i*3;
 			geometryVertices[vIndex] = vertices[i].x;
 			geometryVertices[vIndex+1] = vertices[i].y;
-			geometryVertices[vIndex+2] = this._depth;
+			geometryVertices[vIndex+2] = -this._depth;
 		}
 		geometry.addAttribute('position', new BufferAttribute(geometryVertices, 3));
 		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
@@ -110,10 +114,10 @@ VerticesLoader.prototype.unload = Decorate(VerticesLoader.prototype.unload, Stat
 export class HullLoader {
 	constructor() {
 		this._loaded = false;
-		this._size = 0.09;
-		this._color = 0xff00ff;
+		this._color = 0x00ff00;
 		this._transform = null;
-		this._depth = 2;
+		this._depth = 18;
+		this._size = this._depth/pointSize;
 	}
 
 	load(debug) {
@@ -125,7 +129,7 @@ export class HullLoader {
 			let vIndex = i*3;
 			vertices[vIndex] = hull[i].x;
 			vertices[vIndex+1] = hull[i].y;
-			vertices[vIndex+2] = this._depth;
+			vertices[vIndex+2] = -this._depth;
 		}
 		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
 		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
@@ -152,11 +156,11 @@ export class HullEdgesLoader {
 		this._loaded = false;
 		this._transform = null;
 		this._color = 0x00ff00;
-		this._depth = 3;
+		this._depth = 17;
 	}
 
 	load(debug) {
-		let vertices = debug.vertices;
+		let vertices = debug.preTransformVertices;
 		let hullEdges = debug.hullEdges;
 		let geometryVertices = new Float32Array(hullEdges.length*2*3);
 		let geometry = new BufferGeometry();
@@ -168,10 +172,10 @@ export class HullEdgesLoader {
 			let p2 = vertices[edge.endIndex];
 			geometryVertices[vIndex] = p1.x;
 			geometryVertices[vIndex+1] = p1.y;
-			geometryVertices[vIndex+2] = this._depth;
+			geometryVertices[vIndex+2] = -this._depth;
 			geometryVertices[vIndex+3] = p2.x;
 			geometryVertices[vIndex+4] = p2.y;
-			geometryVertices[vIndex+5] = this._depth;
+			geometryVertices[vIndex+5] = -this._depth;
 		}
 		geometry.addAttribute('position', new BufferAttribute(geometryVertices, 3));
 		let mesh = new LineSegments(geometry, new LineBasicMaterial({color: this._color}));
@@ -199,11 +203,11 @@ export class EdgesLoader {
 		this._loaded = false;
 		this._transform = null;
 		this._color = 0xff0000;
-		this._depth = 4;
+		this._depth = 16;
 	}
 
 	load(debug) {
-		let vertices = debug.vertices;
+		let vertices = debug.preTransformVertices;
 		let edges = debug.edges;
 		let geometryVertices = new Float32Array(edges.length*2*3);
 		let geometry = new BufferGeometry();
@@ -215,10 +219,10 @@ export class EdgesLoader {
 			let p2 = vertices[edge.endIndex];
 			geometryVertices[vIndex] = p1.x;
 			geometryVertices[vIndex+1] = p1.y;
-			geometryVertices[vIndex+2] = this._depth;
+			geometryVertices[vIndex+2] = -this._depth;
 			geometryVertices[vIndex+3] = p2.x;
 			geometryVertices[vIndex+4] = p2.y;
-			geometryVertices[vIndex+5] = this._depth;
+			geometryVertices[vIndex+5] = -this._depth;
 		}
 		geometry.addAttribute('position', new BufferAttribute(geometryVertices, 3));
 		let mesh = new LineSegments(geometry, new LineBasicMaterial({color: this._color}));
@@ -245,21 +249,58 @@ export class CentreLoader {
 	constructor() {
 		this._loaded = false;
 		this._transform = null;
-		this._color = 0x00ffff;
-		this._depth = 5;
-		this._size = 0.1;
+		this._color = 0x0000ff;
+		this._depth = 15;
+		this._size = this._depth/pointSize/4;
 	}
 
 	load(debug) {
 		let centre = debug.centre;
-		let vertices = new Float32Array(3);
-		let geometry = new BufferGeometry();
+		let geometry = new BoxBufferGeometry(this._size, this._size, 0);
+		let mesh = new Mesh(geometry, new MeshBasicMaterial({color: this._color}));
+		this._transform = Renderer.add(mesh);
+		this._transform.position.set(centre.x, centre.y, -this._depth);
 
+		this._loaded = true;
+	}
+
+	unload() {
+		Renderer.remove(this._transform);
+		this._transform = null;
+
+		this._loaded = false;
+	}
+
+	get loaded() {
+		return this._loaded;
+	}
+}
+CentreLoader.prototype.load = Decorate(CentreLoader.prototype.load, StateFalseCheck);
+CentreLoader.prototype.unload = Decorate(CentreLoader.prototype.unload, StateTrueCheck);
+
+export class ForwardLoader {
+	constructor() {
+		this._loaded = false;
+		this._transform = null;
+		this._color = 0x0000ff;
+		this._depth = 14;
+	}
+
+	load(debug) {
+		let centre = debug.centre;
+		let forward = debug.forward;
+		let forwardP = Vector.add(centre, forward);
+		forwardP = Vector.mult(forwardP, 10);
+		let vertices = new Float32Array(6);
 		vertices[0] = centre.x;
 		vertices[1] = centre.y;
-		vertices[2] = this._depth;
+		vertices[2] = -this._depth;
+		vertices[3] = forwardP.x;
+		vertices[4] = forwardP.y;
+		vertices[5] = -this._depth;
+		let geometry = new BufferGeometry();
 		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
-		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
+		let mesh = new LineSegments(geometry, new LineBasicMaterial({color: this._color}));
 		this._transform = Renderer.add(mesh);
 
 		this._loaded = true;
@@ -276,5 +317,5 @@ export class CentreLoader {
 		return this._loaded;
 	}
 }
-EdgesLoader.prototype.load = Decorate(EdgesLoader.prototype.load, StateFalseCheck);
-EdgesLoader.prototype.unload = Decorate(EdgesLoader.prototype.unload, StateTrueCheck);
+ForwardLoader.prototype.load = Decorate(ForwardLoader.prototype.load, StateFalseCheck);
+ForwardLoader.prototype.unload = Decorate(ForwardLoader.prototype.unload, StateTrueCheck);
