@@ -191,5 +191,6 @@ const main = function() {
 	Update.start();
 
 	generateShip(curSeed);
+	stageLoaders.forEach( (e, i) => loadStage(i));
 }
 window.addEventListener('load', main);

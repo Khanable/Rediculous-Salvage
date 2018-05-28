@@ -88,6 +88,7 @@ export class Ship {
 		circles.forEach( circle => {
 			circle.centreDistance = this._random.nextFloatRange(settings.minCircleDistance, settings.maxCircleDistance);
 		});
+
 		//collapse duplicate circles with the same distances
 		let oldCircles = circles;
 		circles = [];
@@ -97,7 +98,6 @@ export class Ship {
 			}
 		}
 		
-
 		//Setup circle nodes
 		let outerCircle = circles.reduce( (acc, cv) => {
 			if ( acc == null || cv.centreDistance > acc.centreDistance ) {
@@ -106,6 +106,7 @@ export class Ship {
 			return acc;
 		}, null);
 		outerCircle.numNodes = 3;
+
 		let extraNodes = this._random.nextFloatRange(settings.minExtraNodes, settings.maxExtraNodes);
 		for(let i = 0; i < extraNodes; i++) {
 			let index = this._random.nextIntRange(0, circles.length-1);
@@ -134,88 +135,88 @@ export class Ship {
 		return rtn;
 	}
 
-	//_getForward(vertices, hullEdges, centre) {
-	//	let rtn = null;
-	//	let rtnDist = null;
-	//	let hullEdgeIndex = null;
-
-	//	//Find furthest vert from centre
-	//	for(let i = 0; i < hullEdges.length; i++) {
-	//		let edge = hullEdges[i];
-	//		let p1 = vertices[edge.startIndex];
-	//		let linePoint = Vector.sub(p1, centre);
-	//		let distPoint = Vector.magnitude(linePoint);
-
-	//		if ( rtn == null || distPoint > rtnDist ) {
-	//			rtn = linePoint;
-	//			rtnDist = distPoint;
-	//			hullEdgeIndex = i;
-	//		}
-	//	}
-
-	//	//Consider edge midpoints on ether side of furthest vert from centre
-	//	let edge1 = hullEdges[hullEdgeIndex];
-	//	let pR = vertices[edge1.startIndex];
-	//	let p1 = vertices[edge1.endIndex];
-	//	let p2 = hullEdges.find( e => e.endIndex == edge1.startIndex ).startIndex;
-	//	p2 = vertices[p2];
-
-	//	let line1 = Vector.sub(p1, pR);
-	//	let line2 = Vector.sub(p2, pR);
-	//	let edge1Midpoint = Vector.add(pR, Vector.div(line1, 2));
-	//	let edge2Midpoint = Vector.add(pR, Vector.div(line2, 2));
-
-	//	let line1Mag = Vector.magnitude(line1);
-	//	let line2Mag = Vector.magnitude(line2);
-	//	let line1Midpoint = Vector.sub(edge1Midpoint, centre);
-	//	let line2Midpoint = Vector.sub(edge2Midpoint, centre);
-	//	let line1MidpointMag = Vector.magnitude(line1Midpoint);
-	//	let line2MidpointMag = Vector.magnitude(line2Midpoint);
-
-	//	let midPoint1DistAdj = line1MidpointMag+line1MidpointMag/line1Mag;
-	//	let midPoint2DistAdj = line2MidpointMag+line2MidpointMag/line2Mag;
-
-	//	if ( midPoint1DistAdj > rtnDist ) {
-	//		rtn = line1Midpoint;
-	//	}
-	//	else if ( midPoint2DistAdj > rtnDist ) {
-	//		rtn = line2Midpoint;
-	//	}
-
-	//	return Vector.normalise(rtn);
-	//}
-
-	_getForward(vertices, centre) {
+	_getForward(vertices, hullEdges, centre) {
 		let rtn = null;
 		let rtnDist = null;
-		let rtnSymetry = null;
-		for(let vert of vertices) {
-			if ( !(vert.x == 0 && vert.y == 0) ) { 
-				let curForward = Vector.sub(vert, centre);
-				let totals = [0, 0];
-				let dist = Vector.magnitudeSquared(curForward);
-				for(let compareVert of vertices) {
-					if ( compareVert != vert ) {
-						let toVert = Vector.sub(compareVert, centre);
-						let side = Vector.cross(curForward, toVert);
-						if ( side >= 0 ) {
-							totals[0]++;
-						}
-						else {
-							totals[1]++;
-						}
-					}
-				}
-				let symetry = Math.abs(totals[0] - totals[1]);
-				if ( rtn == null || symetry < rtnSymetry || (symetry == rtnSymetry && dist > rtnDist) ) {
-					rtn = curForward;
-					rtnDist = dist;
-					rtnSymetry = symetry;
-				}
+		let hullEdgeIndex = null;
+
+		//Find furthest vert from centre
+		for(let i = 0; i < hullEdges.length; i++) {
+			let edge = hullEdges[i];
+			let p1 = vertices[edge.startIndex];
+			let linePoint = Vector.sub(p1, centre);
+			let distPoint = Vector.magnitude(linePoint);
+
+			if ( rtn == null || distPoint > rtnDist ) {
+				rtn = linePoint;
+				rtnDist = distPoint;
+				hullEdgeIndex = i;
 			}
 		}
+
+		//Consider edge midpoints on ether side of furthest vert from centre
+		let edge1 = hullEdges[hullEdgeIndex];
+		let pR = vertices[edge1.startIndex];
+		let p1 = vertices[edge1.endIndex];
+		let p2 = hullEdges.find( e => e.endIndex == edge1.startIndex ).startIndex;
+		p2 = vertices[p2];
+
+		let line1 = Vector.sub(p1, pR);
+		let line2 = Vector.sub(p2, pR);
+		let edge1Midpoint = Vector.add(pR, Vector.div(line1, 2));
+		let edge2Midpoint = Vector.add(pR, Vector.div(line2, 2));
+
+		let line1Mag = Vector.magnitude(line1);
+		let line2Mag = Vector.magnitude(line2);
+		let line1Midpoint = Vector.sub(edge1Midpoint, centre);
+		let line2Midpoint = Vector.sub(edge2Midpoint, centre);
+		let line1MidpointMag = Vector.magnitude(line1Midpoint);
+		let line2MidpointMag = Vector.magnitude(line2Midpoint);
+
+		let midPoint1DistAdj = line1MidpointMag+line1MidpointMag/line1Mag;
+		let midPoint2DistAdj = line2MidpointMag+line2MidpointMag/line2Mag;
+
+		if ( midPoint1DistAdj > rtnDist ) {
+			rtn = line1Midpoint;
+		}
+		else if ( midPoint2DistAdj > rtnDist ) {
+			rtn = line2Midpoint;
+		}
+
 		return Vector.normalise(rtn);
 	}
+
+	//_getForward(vertices, centre) {
+	//	let rtn = null;
+	//	let rtnDist = null;
+	//	let rtnSymetry = null;
+	//	for(let vert of vertices) {
+	//		if ( !(vert.x == 0 && vert.y == 0) ) { 
+	//			let curForward = Vector.sub(vert, centre);
+	//			let totals = [0, 0];
+	//			let dist = Vector.magnitude(curForward);
+	//			for(let compareVert of vertices) {
+	//				if ( compareVert != vert ) {
+	//					let toVert = Vector.sub(compareVert, centre);
+	//					let side = Vector.cross(curForward, toVert);
+	//					if ( side >= 0 ) {
+	//						totals[0]++;
+	//					}
+	//					else {
+	//						totals[1]++;
+	//					}
+	//				}
+	//			}
+	//			let symetry = Math.abs(totals[0] - totals[1]);
+	//			if ( rtn == null || symetry < rtnSymetry || (symetry == rtnSymetry && dist > rtnDist) ) {
+	//				rtn = curForward;
+	//				rtnDist = dist;
+	//				rtnSymetry = symetry;
+	//			}
+	//		}
+	//	}
+	//	return Vector.normalise(rtn);
+	//}
 
 	_getHullEdges(vertices, hull) {
 		let rtn = [];
@@ -270,8 +271,8 @@ export class Ship {
 		let hullEdges = this._getHullEdges(vertices, hull);
 		let edges = this._getEdges(vertices);
 		let centre = Vertices.centre(hull);
-		//let forward = this._getForward(vertices, hullEdges, centre);
-		let forward = this._getForward(vertices, centre);
+		let forward = this._getForward(vertices, hullEdges, centre);
+		//let forward = this._getForward(vertices, centre);
 		Vertices.translate(vertices, Vector.neg(centre), 1);
 		let angle = Vector.angle(Vector.create(0, 0), Vector.create(0, 1)) - Vector.angle(Vector.create(0, 0), forward);
 		Vertices.rotate(vertices, angle, Vector.create(0, 0));

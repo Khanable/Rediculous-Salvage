@@ -289,8 +289,7 @@ export class ForwardLoader {
 	load(debug) {
 		let centre = debug.centre;
 		let forward = debug.forward;
-		let forwardP = Vector.add(centre, forward);
-		forwardP = Vector.mult(forwardP, 10);
+		let forwardP = Vector.mult(forward, 10);
 		let vertices = new Float32Array(6);
 		vertices[0] = centre.x;
 		vertices[1] = centre.y;
