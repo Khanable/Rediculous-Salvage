@@ -200,7 +200,7 @@ export class HullEdgesLoader {
 HullEdgesLoader.prototype.load = Decorate(HullEdgesLoader.prototype.load, StateFalseCheck);
 HullEdgesLoader.prototype.unload = Decorate(HullEdgesLoader.prototype.unload, StateTrueCheck);
 
-export class EdgesLoader {
+export class InternalEdgesLoader {
 	constructor() {
 		this._loaded = false;
 		this._transform = null;
@@ -210,13 +210,13 @@ export class EdgesLoader {
 
 	load(debug) {
 		let vertices = debug.vertices;
-		let edges = debug.edges;
-		let geometryVertices = new Float32Array(edges.length*2*3);
+		let internalEdges = debug.internalEdges;
+		let geometryVertices = new Float32Array(internalEdges.length*2*3);
 		let geometry = new BufferGeometry();
 
-		for(let i = 0; i < edges.length; i++) {
+		for(let i = 0; i < internalEdges.length; i++) {
 			let vIndex = i*2*3;
-			let edge = edges[i];
+			let edge = internalEdges[i];
 			let p1 = vertices[edge.startIndex];
 			let p2 = vertices[edge.endIndex];
 			geometryVertices[vIndex] = p1.x;
@@ -244,8 +244,8 @@ export class EdgesLoader {
 		return this._loaded;
 	}
 }
-EdgesLoader.prototype.load = Decorate(EdgesLoader.prototype.load, StateFalseCheck);
-EdgesLoader.prototype.unload = Decorate(EdgesLoader.prototype.unload, StateTrueCheck);
+InternalEdgesLoader.prototype.load = Decorate(InternalEdgesLoader.prototype.load, StateFalseCheck);
+InternalEdgesLoader.prototype.unload = Decorate(InternalEdgesLoader.prototype.unload, StateTrueCheck);
 
 export class CentreLoader {
 	constructor() {

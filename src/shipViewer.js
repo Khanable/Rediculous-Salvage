@@ -3,8 +3,10 @@ import { RandomFactory } from 'random.js';
 import { Update } from 'update.js';
 import { Renderer } from 'render.js';
 import { Vector3, AxesHelper } from 'three';
-import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, EdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
+import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, InternalEdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
 import 'string.js';
+import { StorageGetOrDefault } from 'util.js';
+
 
 let shipMeshData = null;
 const inputHandlers = [];
@@ -14,7 +16,7 @@ const stages = [
 	'Vertices',
 	'Hull',
 	'HullEdges',
-	'Edges',
+	'InternalEdges',
 	'Centre',
 	'Forward',
 ];
@@ -24,13 +26,20 @@ const stageLoaders = [
 	new VerticesLoader(),
 	new HullLoader(),
 	new HullEdgesLoader(),
-	new EdgesLoader(),
+	new InternalEdgesLoader(),
 	new CentreLoader(),
 	new ForwardLoader(),
 ];
 let centreAlign = false;
 let forwardAlign = false;
+let axes = new AxesHelper(10);
+let axesTransform = null;
 
+
+const addAxes = function() {
+	axesTransform = Renderer.add(axes);
+	axesTransform.position.set(0, 0, -99);
+}
 
 const loadStage = function(stage) {
 	stageLoaders[stage].load(shipMeshData);
@@ -63,7 +72,7 @@ const generateShip = function(seed) {
 	});
 }
 
-const handleSetSeed = (function() {
+const handleSetSeed = function() {
 	let domText = null;
 	let showSeedInput = false;
 	let numberChars = new Array(10).fill(null).map( (e, i) => i.toString() );
@@ -106,11 +115,11 @@ const handleSetSeed = (function() {
 
 		return rtn;
 	}
-})();
+}
 inputHandlers.push(handleSetSeed);
 
 
-const handleShipStage = (function() {
+const handleShipStage = function() {
 	let showStageToggle = false;
 	const domContainer = document.createElement('div');
 	domContainer.setAttribute('style', 'position:absolute;background:white;overflow:hidden;right:0px;bottom:0px;width:250px;height:400px;')
@@ -181,11 +190,11 @@ const handleShipStage = (function() {
 
 		return rtn;
 	}
-})();
+}
 inputHandlers.push(handleShipStage);
 
 
-const handleShipTransformation = (function() {
+const handleShipTransformation = function() {
 	return function(key) {
 		let rtn = false;
 
@@ -204,8 +213,30 @@ const handleShipTransformation = (function() {
 
 		return rtn;
 	}
-})();
+}
 inputHandlers.push(handleShipTransformation);
+
+
+const handleCentreAxes = function() {
+	return function(key) {
+		let rtn = false;
+
+		if ( key == 'o' ) {
+			if ( axesTransform != null ) {
+				Renderer.remove(axesTransform);
+				axesTransform = null;
+			}
+			else {
+				addAxes();
+			}
+			rtn = true;
+		}
+
+		return rtn;
+	}
+}
+inputHandlers.push(handleCentreAxes);
+
 
 
 const keyPress = function(key) {
@@ -219,18 +250,28 @@ window.addEventListener('keydown', (event) => {
 	keyPress(event.key)
 });
 
+const getBoolFromStr = function(str) {
+	return str.toLowerCase() == 'false' ? false : true;
+}
 
 const main = function() {
 	Update.init();
 	Renderer.init();
 
 	Renderer.setCameraPos(new Vector3(0, 0, 5));
-	let axes = new AxesHelper(10);
-	axes = Renderer.add(axes);
-	axes.position.set(0, 0, -99);
 	Update.start();
 
+	curSeed = StorageGetOrDefault('curSeed', '0');
+	centreAlign = getBoolFromStr(StorageGetOrDefault('centreAlign', 'false'));
+	forwardAlign = getBoolFromStr(StorageGetOrDefault('forwardAlign', 'false'));
+	let loadStages = StorageGetOrDefault('stages', Math.pow(2, stageLoaders.length)-1);
+	console.log(loadStages)
+
+	inputHandlers.map( e => e() );
+
 	generateShip(curSeed);
-	stageLoaders.forEach( (e, i) => loadStage(i));
+	stageLoaders.forEach( (e, i) => loadStage(i) );
+	addAxes();
+
 }
 window.addEventListener('load', main);

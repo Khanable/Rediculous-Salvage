@@ -23,3 +23,13 @@ export const DecorateDescriptor = function(obj, key, decorator, accessor) {
 		throw new Error('Descriptor key doesnt exist: '+key);
 	}
 }
+
+export const StorageGetOrDefault = function(key, defaultValue) {
+	const storage = window.localStorage;
+	let rtn = storage.getItem(key);
+	if ( rtn == null ) {
+		storage.setItem(key, defaultValue);
+		rtn = defaultValue;
+	}
+	return rtn;
+}

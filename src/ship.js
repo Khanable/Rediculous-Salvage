@@ -5,12 +5,12 @@ import { Decorate, IsInited } from 'util.js';
 
 export class ShipSettings {
 	constructor() {
-		this._minCircles = 4;
-		this._maxCircles = 9;
-		this._minCircleDistance = 0.25;
-		this._maxCircleDistance = 5;
+		this._minCircles = 2;
+		this._maxCircles = 5;
+		this._minCircleDistance = 0.05;
+		this._maxCircleDistance = 3;
 		this._minExtraNodes = 5;
-		this._maxExtraNodes = 10;
+		this._maxExtraNodes = 15;
 	}
 
 	set(changes) {
@@ -33,6 +33,20 @@ export class ShipSettings {
 		let rtn = {};
 		let toPublic = Object.keys(this).forEach( e => rtn[e.slice(1)] = this[e] );
 		return Object.freeze(rtn);
+	}
+}
+
+class RingLevel {
+	constructor(distance, indicies) {
+		this._distance = distance;
+		this._indicies = indicies;
+	}
+
+	get distance() {
+		return this._distance;
+	}
+	get indicies() {
+		return Array.from(this._indicies);
 	}
 }
 
@@ -119,7 +133,12 @@ export class Ship {
 	}
 
 	_getVertices(circles) {
-		let rtn = [Vector.create(0, 0)];
+		let rtn = {};
+		let verticesRingLevel = new Map();
+		rtn.vertices = [Vector.create(0, 0)];
+		verticesRingLevel.set(0, [0]);
+		
+		//Generate Vertices with data about their ring level
 		for(let circle of circles) {
 			let thetas = [];
 			for(let i = 0; i < circle.numNodes; i++) {
@@ -128,12 +147,26 @@ export class Ship {
 					thetas.push(theta);
 					let x = circle.centreDistance*Math.sin(theta);
 					let y = circle.centreDistance*Math.cos(theta);
-					rtn.push(Vector.create(x, y));
+					rtn.vertices.push(Vector.create(x, y));
+					let index = rtn.vertices.length-1;
+
+					let indiciesGroup = null;
+					if ( verticesRingLevel.has(circle.centreDistance) ) {
+						indiciesGroup = verticesRingLevel.get(circle.centreDistance);
+					}
+					else {
+						indiciesGroup = [];
+						verticesRingLevel.set(circle.centreDistance, indiciesGroup);
+					}
+					indiciesGroup.push(index);
 				}
 			}
 			circle.numNodes = thetas.length;
 		}
-		return rtn;
+		//Order and reduce ring level map
+		rtn.ringLevels = Array.from(verticesRingLevel).map( e => new RingLevel(e[0], e[1]) ).sort( (a,b) => a.distance - b.distance );
+
+		return Object.freeze(rtn);
 	}
 
 	_getForward(vertices, hullEdges, centre) {
@@ -234,51 +267,53 @@ export class Ship {
 		return rtn;
 	}
 
-	_getEdges(vertices, hullIndicies) {
-		//Group vertices by ring level
-		let groupedIndicies = new Map();
-		vertices.forEach( (e, i) => {
-			let dist = Vector.magnitude(e);
-			let group = null;
-			if ( !groupedIndicies.has(dist) ) {
-				group = [];
-				groupedIndicies.set(dist, group);
-			}
-			else {
-				group = groupedIndicies.get(dist);
-			}
-
-			group.push(i);
-		});
-		let levels = Array.from(groupedIndicies).sort( (a,b) => a[0]-b[0] ).map( e => e[1] );
-
+	_getEdges(vertices, ringLevels, hullIndicies, internalIndicies) {
+		//Determine all possible internal edges
+		//Restrict edges based on conditions.
 		let availableEdges = [];
 		for(let fromIndex = 0; fromIndex < vertices.length; fromIndex++) {
 			let isFromHullIndex = hullIndicies.includes(fromIndex);
-			let fromLevel = levels.findIndex( e => e.includes(fromIndex) );
+			let fromLevel = ringLevels.findIndex( e => e.indicies.includes(fromIndex) );
 			for( let toIndex = fromIndex+1; toIndex < vertices.length; toIndex++ ) {
-				let toLevel = levels.findIndex( e => e.includes(toIndex) );
+				let toLevel = ringLevels.findIndex( e => e.indicies.includes(toIndex) );
 				let levelDiff = Math.abs(fromLevel-toLevel);
-				//Restrict edges to 1 level difference and not hull vertex to hull vertex.
-				if ( !(isFromHullIndex && hullIndicies.includes(toIndex)) && levelDiff == 1 ) {
+				let notFromHullToHull = !(isFromHullIndex && hullIndicies.includes(toIndex));
+				let relVector = Vector.sub(vertices[toIndex], vertices[fromIndex]);
+				let relDistance = Vector.magnitude(relVector);
+				let distanceOk = relDistance <= ringLevels[fromLevel].distance || relDistance <= ringLevels[toLevel].distance;
+				if ( notFromHullToHull && levelDiff <= 1 && distanceOk ) {
 					availableEdges.push(new Edge(fromIndex, toIndex));
 				}
 			}
 		}
 
-		let numNodes = vertices.length;
-		let removeJoins = this._random.nextIntRange(0, availableEdges.length-1);
-		for(let i = 0; i < removeJoins; i++) {
+		
+		//Join internal edges with at least 1 connection to another edge
+		let rtn = [];
+		for(let i = 0; i < internalIndicies.length-1; i++) {
+			let internalIndex = internalIndicies[i];
+			let edges = availableEdges.filter( e => e.startIndex == internalIndex || e.endIndex == internalIndex );
+			if ( edges.length > 0 ) {
+				let edgeIndex = this._random.nextIntRange(0, edges.length-1);
+				let edge = edges[edgeIndex];
+				rtn.push(availableEdges.splice(availableEdges.indexOf(edge), 1)[0]);
+			}
+		}
+
+
+		//Make some extra joins
+		let joins = this._random.nextIntRange(0, availableEdges.length-1);
+		for(let i = 0; i < joins; i++) {
 			if ( availableEdges.length > 0 ) {
-				let rmIndex = this._random.nextIntRange(0, availableEdges.length-1);
-				availableEdges.splice(rmIndex, 1);
+				let joinIndex = this._random.nextIntRange(0, availableEdges.length-1);
+				rtn.push(availableEdges.splice(joinIndex, 1)[0]);
 			}
 			else {
 				break;
 			}
 		}
 
-		return availableEdges;
+		return rtn;
 	}
 
 	_getHullIndicies(vertices, hull) {
@@ -299,12 +334,15 @@ export class Ship {
 
 		let settings = shipSettings.get();
 		let circles = this._getCircles(settings);
-		let vertices = this._getVertices(circles);
+		let getVerticesData = this._getVertices(circles);
+		let vertices = getVerticesData.vertices;
+		let ringLevels = getVerticesData.ringLevels;
 		//let vertices = [Vector.create(0, 0), Vector.create(0, 1), Vector.create(-0.8, -0.8), Vector.create(0.8, -0.8)]
 		let hull = Vertices.hull(vertices);
 		let hullIndicies = this._getHullIndicies(vertices, hull);
+		let internalIndicies = Array.from(vertices).map( (e,i) => i ).filter( i => !hullIndicies.includes(i) );
 		let hullEdges = this._getHullEdges(vertices, hullIndicies);
-		let edges = this._getEdges(vertices, hullIndicies);
+		let internalEdges = this._getEdges(vertices, ringLevels, hullIndicies, internalIndicies);
 		let centre = Vertices.centre(hull);
 		let forward = this._getForward(vertices, hullEdges, centre);
 		//let forward = this._getForward(vertices, centre);
@@ -313,7 +351,7 @@ export class Ship {
 		rtn.vertices = vertices;
 		rtn.hullIndicies = hullIndicies;
 		rtn.hullEdges = hullEdges;
-		rtn.edges = edges;
+		rtn.internalEdges = internalEdges;
 		rtn.centre = centre;
 		rtn.forward = forward;
 		Object.freeze(rtn);
