@@ -81,7 +81,7 @@ export class VerticesLoader {
 	}
 
 	load(debug) {
-		let vertices = debug.preTransformVertices;
+		let vertices = debug.vertices;
 		let geometry = new BufferGeometry();
 		let geometryVertices = new Float32Array(vertices.length*3);
 
@@ -121,17 +121,19 @@ export class HullLoader {
 	}
 
 	load(debug) {
-		let hull = debug.hull;
+		let vertices = debug.vertices;
+		let hullIndicies = debug.hullIndicies;
 		let geometry = new BufferGeometry();
-		let vertices = new Float32Array(hull.length*3);
+		let geometryVertices = new Float32Array(hullIndicies.length*3);
 
-		for(let i = 0; i < hull.length; i++) {
+		hullIndicies.forEach( (e, i) => {
 			let vIndex = i*3;
-			vertices[vIndex] = hull[i].x;
-			vertices[vIndex+1] = hull[i].y;
-			vertices[vIndex+2] = -this._depth;
-		}
-		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
+			let vertex = vertices[e];
+			geometryVertices[vIndex] = vertex.x;
+			geometryVertices[vIndex+1] = vertex.y;
+			geometryVertices[vIndex+2] = -this._depth;
+		});
+		geometry.addAttribute('position', new BufferAttribute(geometryVertices, 3));
 		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
 		this._transform = Renderer.add(mesh);
 
@@ -160,7 +162,7 @@ export class HullEdgesLoader {
 	}
 
 	load(debug) {
-		let vertices = debug.preTransformVertices;
+		let vertices = debug.vertices;
 		let hullEdges = debug.hullEdges;
 		let geometryVertices = new Float32Array(hullEdges.length*2*3);
 		let geometry = new BufferGeometry();
@@ -207,7 +209,7 @@ export class EdgesLoader {
 	}
 
 	load(debug) {
-		let vertices = debug.preTransformVertices;
+		let vertices = debug.vertices;
 		let edges = debug.edges;
 		let geometryVertices = new Float32Array(edges.length*2*3);
 		let geometry = new BufferGeometry();

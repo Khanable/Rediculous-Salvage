@@ -6,7 +6,7 @@ import { Vector3, AxesHelper } from 'three';
 import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, EdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
 import 'string.js';
 
-let shipDebug = null;
+let shipMeshData = null;
 const inputHandlers = [];
 let curSeed = '0';
 const stages = [
@@ -28,10 +28,12 @@ const stageLoaders = [
 	new CentreLoader(),
 	new ForwardLoader(),
 ];
+let centreAlign = false;
+let forwardAlign = false;
 
 
 const loadStage = function(stage) {
-	stageLoaders[stage].load(shipDebug);
+	stageLoaders[stage].load(shipMeshData);
 }
 const unloadStage = function(stage) {
 	stageLoaders[stage].unload();
@@ -43,13 +45,20 @@ const generateShip = function(seed) {
 	const randomFactory = new RandomFactory(parseInt(seed));
 	const ship = new Ship(randomFactory);
 	let settings = new ShipSettings();
-	shipDebug = {};
-	ship._generateMesh(settings, shipDebug);
+	shipMeshData = ship._generateMesh(settings);
+
+	if ( centreAlign ) {
+		shipMeshData = ship._translateCentre(shipMeshData);
+	}
+
+	if ( forwardAlign ) {
+		shipMeshData = ship._rotateForward(shipMeshData);
+	}
 
 	stageLoaders.forEach( e => {
 		if ( e.loaded ) {
 			e.unload();
-			e.load(shipDebug);
+			e.load(shipMeshData);
 		}
 	});
 }
@@ -111,23 +120,30 @@ const handleShipStage = (function() {
 	const selectedColor = 'grey';
 	const enabledColor = 'red'
 
-	stages.forEach( e => {
+	const getTextColor = function(stage) {
+		return stageLoaders[stage].loaded ? enabledColor : 'inherit';
+	}
+	const getSelectedColor = function(stage) {
+		return stage == curStage ? selectedColor : 'inherit';
+	}
+	const getStyle = function(stage) {
+		return styleFormat.format(getSelectedColor(stage), getTextColor(stage));
+	}
+
+	stages.forEach( (e,i) => {
 		const dom = document.createElement('div');
 		dom.innerText = e;
 		domStages.push(dom);
 		domContainer.appendChild(dom);
 	});
-	domStages[curStage].setAttribute('style', styleFormat.format(selectedColor, 'inherit'));
 
-	const getTextColor = function(stage) {
-		return stageLoaders[stage].loaded ? enabledColor : 'inherit';
-	}
 
 	return function(key) {
 		let rtn = false;
 		if ( key == 't' ) {
 			if ( !showStageToggle ) {
 				document.body.appendChild(domContainer);
+				domStages.forEach( (e,i) => e.setAttribute('style', getStyle(i)) );
 			}
 			else {
 				document.body.removeChild(domContainer);
@@ -138,25 +154,26 @@ const handleShipStage = (function() {
 		else if ( showStageToggle ) {
 			if ( key == 'ArrowDown' || key == 'ArrowUp' ) {
 				rtn = true;
-				domStages[curStage].setAttribute('style', styleFormat.format('inherit', getTextColor(curStage)));
+				let lastStage = curStage;
 				if ( key == 'ArrowUp' ) {
 					curStage = curStage > 1 && stages.length > 1 ? curStage-1 : 0;
 				}
 				else if ( key == 'ArrowDown') {
 					curStage = curStage < stages.length-1 ? curStage+1 : stages.length-1;
 				}
-				domStages[curStage].setAttribute('style', styleFormat.format(selectedColor, getTextColor(curStage)));
+				domStages[lastStage].setAttribute('style', getStyle(lastStage));
+				domStages[curStage].setAttribute('style', getStyle(curStage));
 			}
 			else if ( key == 'ArrowRight') {
 				let state = stageLoaders[curStage].loaded;
 
 				if ( !state ) {
 					loadStage(curStage);
-					domStages[curStage].setAttribute('style', styleFormat.format(selectedColor, enabledColor));
+					domStages[curStage].setAttribute('style', getStyle(curStage));
 				}
 				else {
 					unloadStage(curStage);
-					domStages[curStage].setAttribute('style', styleFormat.format(selectedColor, 'inherit'));
+					domStages[curStage].setAttribute('style', getStyle(curStage));
 				}
 				rtn = true;
 			}
@@ -166,6 +183,29 @@ const handleShipStage = (function() {
 	}
 })();
 inputHandlers.push(handleShipStage);
+
+
+const handleShipTransformation = (function() {
+	return function(key) {
+		let rtn = false;
+
+		if ( key == 'c' ) {
+			centreAlign = centreAlign ? false : true;
+			rtn = true;
+		}
+		else if ( key == 'f' ) {
+			forwardAlign = forwardAlign ? false : true;
+			rtn = true;
+		}
+
+		if ( rtn ) { 
+			generateShip(curSeed);
+		}
+
+		return rtn;
+	}
+})();
+inputHandlers.push(handleShipTransformation);
 
 
 const keyPress = function(key) {
