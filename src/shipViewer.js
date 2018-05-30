@@ -5,11 +5,13 @@ import { Renderer } from 'render.js';
 import { Vector3, AxesHelper } from 'three';
 import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, InternalEdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
 import 'string.js';
-import { StorageGetOrDefault } from 'util.js';
+import { StorageGetOrDefault, GetBoolFromStr, GetStrFromBool } from 'util.js';
+import { GetBits } from 'binary.js';
 
 
+const storage = window.localStorage;
 let shipMeshData = null;
-const inputHandlers = [];
+let inputHandlers = [];
 let curSeed = '0';
 const stages = [
 	'Circles',
@@ -39,13 +41,7 @@ let axesTransform = null;
 const addAxes = function() {
 	axesTransform = Renderer.add(axes);
 	axesTransform.position.set(0, 0, -99);
-}
-
-const loadStage = function(stage) {
-	stageLoaders[stage].load(shipMeshData);
-}
-const unloadStage = function(stage) {
-	stageLoaders[stage].unload();
+	storage.setItem('axes', 'true');
 }
 
 
@@ -64,6 +60,8 @@ const generateShip = function(seed) {
 		shipMeshData = ship._rotateForward(shipMeshData);
 	}
 
+	storage.setItem('curSeed', curSeed);
+
 	stageLoaders.forEach( e => {
 		if ( e.loaded ) {
 			e.unload();
@@ -74,41 +72,51 @@ const generateShip = function(seed) {
 
 const handleSetSeed = function() {
 	let domText = null;
-	let showSeedInput = false;
+	let showSeedInput = GetBoolFromStr(StorageGetOrDefault(storage, 'showSeedInput', 'false'));
 	let numberChars = new Array(10).fill(null).map( (e, i) => i.toString() );
 
 	domText = document.createElement('div');
 	domText.setAttribute('style', 'position:absolute;top:0px;left:0px;z-index:100;width:200px;background:white;height:20px;');
 	domText.innerText = curSeed;
 
+	const attachToDom = function() {
+		document.body.appendChild(domText);
+	}
+
+	if ( showSeedInput ) {
+		attachToDom();
+	}
+
 	return function(key) {
 		let rtn = false;
 
 		if ( key == 's' ) {
 			if ( !showSeedInput ) {
-				document.body.appendChild(domText);
+				attachToDom();
 			}
 			else {
 				document.body.removeChild(domText);
 			}
 			showSeedInput = showSeedInput ? false : true;
+			storage.setItem('showSeedInput', GetStrFromBool(showSeedInput));
 			rtn = true;
 		}
 		else if ( showSeedInput ) {
 			let changed = false;
 			let number = numberChars.includes(key);
+			let seed = curSeed;
 			if ( number ) {
-				curSeed+=key;
+				seed+=key;
 				changed = true;
 			}
 			else if ( key == 'Backspace' ) {
-				curSeed = curSeed.slice(0, curSeed.length-1);
+				seed = seed.slice(0, seed.length-1);
 				changed = true;
 			}
 
 			if ( changed ) {
-				domText.innerText = curSeed;
-				generateShip(curSeed);
+				domText.innerText = seed;
+				generateShip(seed);
 				rtn = true;
 			}
 		}
@@ -120,7 +128,7 @@ inputHandlers.push(handleSetSeed);
 
 
 const handleShipStage = function() {
-	let showStageToggle = false;
+	let showStageToggle = GetBoolFromStr(StorageGetOrDefault(storage, 'showStageToggle', 'false'));
 	const domContainer = document.createElement('div');
 	domContainer.setAttribute('style', 'position:absolute;background:white;overflow:hidden;right:0px;bottom:0px;width:250px;height:400px;')
 	const domStages = [];
@@ -128,6 +136,11 @@ const handleShipStage = function() {
 	const styleFormat = 'background:{0};color:{1};';
 	const selectedColor = 'grey';
 	const enabledColor = 'red'
+
+	const attachToDom = function() {
+		document.body.appendChild(domContainer);
+		domStages.forEach( (e,i) => e.setAttribute('style', getStyle(i)) );
+	}
 
 	const getTextColor = function(stage) {
 		return stageLoaders[stage].loaded ? enabledColor : 'inherit';
@@ -139,6 +152,16 @@ const handleShipStage = function() {
 		return styleFormat.format(getSelectedColor(stage), getTextColor(stage));
 	}
 
+	const updateStorage = function() {
+		let v = 0;
+		stageLoaders.forEach( (e, i) => {
+			if ( e.loaded ) {
+				v+=Math.pow(2, i);
+			}
+		});
+		storage.setItem('stages', v.toString());
+	}
+
 	stages.forEach( (e,i) => {
 		const dom = document.createElement('div');
 		dom.innerText = e;
@@ -146,18 +169,21 @@ const handleShipStage = function() {
 		domContainer.appendChild(dom);
 	});
 
+	if ( showStageToggle ) {
+		attachToDom();
+	}
 
 	return function(key) {
 		let rtn = false;
 		if ( key == 't' ) {
 			if ( !showStageToggle ) {
-				document.body.appendChild(domContainer);
-				domStages.forEach( (e,i) => e.setAttribute('style', getStyle(i)) );
+				attachToDom();
 			}
 			else {
 				document.body.removeChild(domContainer);
 			}
 			showStageToggle = showStageToggle ? false : true;
+			storage.setItem('showStageToggle', GetStrFromBool(showStageToggle));
 
 		}
 		else if ( showStageToggle ) {
@@ -177,13 +203,14 @@ const handleShipStage = function() {
 				let state = stageLoaders[curStage].loaded;
 
 				if ( !state ) {
-					loadStage(curStage);
+					stageLoaders[curStage].load(shipMeshData);
 					domStages[curStage].setAttribute('style', getStyle(curStage));
 				}
 				else {
-					unloadStage(curStage);
+					stageLoaders[curStage].unload();
 					domStages[curStage].setAttribute('style', getStyle(curStage));
 				}
+				updateStorage();
 				rtn = true;
 			}
 		}
@@ -200,10 +227,12 @@ const handleShipTransformation = function() {
 
 		if ( key == 'c' ) {
 			centreAlign = centreAlign ? false : true;
+			storage.setItem('centreAlign', GetStrFromBool(centreAlign));
 			rtn = true;
 		}
 		else if ( key == 'f' ) {
 			forwardAlign = forwardAlign ? false : true;
+			storage.setItem('forwardAlign', GetStrFromBool(forwardAlign));
 			rtn = true;
 		}
 
@@ -225,9 +254,11 @@ const handleCentreAxes = function() {
 			if ( axesTransform != null ) {
 				Renderer.remove(axesTransform);
 				axesTransform = null;
+				storage.setItem('axes', 'false');
 			}
 			else {
 				addAxes();
+				storage.setItem('axes', 'true');
 			}
 			rtn = true;
 		}
@@ -250,10 +281,6 @@ window.addEventListener('keydown', (event) => {
 	keyPress(event.key)
 });
 
-const getBoolFromStr = function(str) {
-	return str.toLowerCase() == 'false' ? false : true;
-}
-
 const main = function() {
 	Update.init();
 	Renderer.init();
@@ -261,17 +288,28 @@ const main = function() {
 	Renderer.setCameraPos(new Vector3(0, 0, 5));
 	Update.start();
 
-	curSeed = StorageGetOrDefault('curSeed', '0');
-	centreAlign = getBoolFromStr(StorageGetOrDefault('centreAlign', 'false'));
-	forwardAlign = getBoolFromStr(StorageGetOrDefault('forwardAlign', 'false'));
-	let loadStages = StorageGetOrDefault('stages', Math.pow(2, stageLoaders.length)-1);
-	console.log(loadStages)
-
-	inputHandlers.map( e => e() );
+	curSeed = StorageGetOrDefault(storage, 'curSeed', '0');
+	centreAlign = GetBoolFromStr(StorageGetOrDefault(storage, 'centreAlign', 'false'));
+	forwardAlign = GetBoolFromStr(StorageGetOrDefault(storage, 'forwardAlign', 'false'));
+	let axes = GetBoolFromStr(StorageGetOrDefault(storage, 'axes', 'true'));
+	let loadStagesV = StorageGetOrDefault(storage, 'stages', Math.pow(2, stageLoaders.length)-1);
+	console.log(loadStagesV);
+	let loadStages = GetBits(loadStagesV);
+	console.log(loadStages);
 
 	generateShip(curSeed);
-	stageLoaders.forEach( (e, i) => loadStage(i) );
-	addAxes();
+	loadStages.forEach( (e, i) => {
+		if ( e ) {
+			let stage = stageLoaders[i];
+			stage.load(shipMeshData);
+		}
+	});
 
+
+	if ( axes ) {
+		addAxes();
+	}
+
+	inputHandlers = inputHandlers.map( e => e() );
 }
 window.addEventListener('load', main);

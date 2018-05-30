@@ -24,8 +24,7 @@ export const DecorateDescriptor = function(obj, key, decorator, accessor) {
 	}
 }
 
-export const StorageGetOrDefault = function(key, defaultValue) {
-	const storage = window.localStorage;
+export const StorageGetOrDefault = function(storage, key, defaultValue) {
 	let rtn = storage.getItem(key);
 	if ( rtn == null ) {
 		storage.setItem(key, defaultValue);
@@ -33,3 +32,11 @@ export const StorageGetOrDefault = function(key, defaultValue) {
 	}
 	return rtn;
 }
+
+export const GetBoolFromStr = function(str) {
+	return str.toLowerCase() == 'false' ? false : true;
+}
+export const GetStrFromBool = function(bool) {
+	return bool ? true : false;
+}
+
