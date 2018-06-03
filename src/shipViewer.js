@@ -9,7 +9,7 @@ import { StorageGetOrDefault, GetBoolFromStr, GetStrFromBool } from 'util.js';
 import { GetBits } from 'binary.js';
 
 
-const storage = window.localStorage;
+const storage = window.sessionStorage;
 let shipMeshData = null;
 let inputHandlers = [];
 let curSeed = '0';
@@ -293,9 +293,7 @@ const main = function() {
 	forwardAlign = GetBoolFromStr(StorageGetOrDefault(storage, 'forwardAlign', 'false'));
 	let axes = GetBoolFromStr(StorageGetOrDefault(storage, 'axes', 'true'));
 	let loadStagesV = StorageGetOrDefault(storage, 'stages', Math.pow(2, stageLoaders.length)-1);
-	console.log(loadStagesV);
 	let loadStages = GetBits(loadStagesV);
-	console.log(loadStages);
 
 	generateShip(curSeed);
 	loadStages.forEach( (e, i) => {

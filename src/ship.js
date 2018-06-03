@@ -85,6 +85,38 @@ class Circle {
 	}
 }
 
+class SymetryMeta {
+	constructor(index, vertexList) {
+		this._list = vertexList;
+		this._index = index;
+		this._symetry = this._getSymetryDiff(this._index, this._list);
+	}
+
+	_getSymetryDiff(i, vertices) {
+		let rtn = [0, 0];
+		let v = vertices[i];
+		vertices.forEach( (testV, j) => {
+			if ( i != j ) {
+				let side = Vector.cross(v, testV);
+				if ( side >= 0 ) {
+					rtn[0]++;
+				}
+				else {
+					rtn[1]++;
+				}
+			}
+		});
+		return Math.abs(rtn[0] - rtn[1]);
+	}
+
+	get symetry() {
+		return this._symetry;
+	}
+	get vertex() {
+		return this._list[this._index];
+	}
+}
+
 export class Ship {
 	constructor(randomFactory) {
 		this._random = randomFactory;
@@ -221,44 +253,35 @@ export class Ship {
 	//	return Vector.normalise(rtn);
 	//}
 
+
 	_getForward(vertices, hullIndicies, hullEdges, centre) {
-		//!Really only want to compare the hull shape
-		let midPointVertices = [];
+		let rtn = null;
+
+		//Adjust all vertices by the centre point.
+		vertices = vertices.map( e => Vector.create(e.x, e.y));
+		Vertices.translate(vertices, Vector.neg(centre), 1);
+
+		let midPoints = [];
 		hullEdges.forEach( (e) => {
 			let p1 = vertices[e.startIndex];
 			let p2 = vertices[e.endIndex];
-			midPoint1DistAdj
+			let relV = Vector.sub(p2, p1);
+			relV = Vector.div(relV, 2);
+			let midP = Vector.add(p1, relV);
+			midPoints.push(midP);
 		});
 
-		let rtn = null;
-		let rtnDist = null;
-		let rtnSymetry = null;
-		for(let vert of vertices) {
-			if ( !(vert.x == 0 && vert.y == 0) ) { 
-				let curForward = Vector.sub(vert, centre);
-				let totals = [0, 0];
-				let dist = Vector.magnitude(curForward);
-				for(let compareVert of vertices) {
-					if ( compareVert != vert ) {
-						let toVert = Vector.sub(compareVert, centre);
-						let side = Vector.cross(curForward, toVert);
-						if ( side >= 0 ) {
-							totals[0]++;
-						}
-						else {
-							totals[1]++;
-						}
-					}
-				}
-				let symetry = Math.abs(totals[0] - totals[1]);
-				if ( rtn == null || symetry < rtnSymetry || (symetry == rtnSymetry && dist > rtnDist) ) {
-					rtn = curForward;
-					rtnDist = dist;
-					rtnSymetry = symetry;
-				}
-			}
-		}
-		return Vector.normalise(rtn);
+		let hullSymetry = hullIndicies.map( hI => new SymetryMeta(hI, vertices) ); 
+		let midpointSymetry = midPoints.map( (e, i) => new SymetryMeta(i, midPoints) );
+		let symetry = hullSymetry.concat(midpointSymetry);
+
+		//Filter to best symetry choices and select random
+		let bestSymetry = symetry.map( e => e.symetry ).reduce( (acc, cv) => cv < acc ? cv : acc );
+		symetry = symetry.filter( e => e.symetry == bestSymetry );
+		let randSymetryIndex = this._random.nextIntRange(0, symetry.length-1);
+		rtn = symetry[randSymetryIndex];
+
+		return Vector.normalise(rtn.vertex);
 	}
 
 	_getHullEdges(vertices, hullIndicies) {
