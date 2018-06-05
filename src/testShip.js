@@ -2,6 +2,8 @@ import { test, module } from 'qunit';
 import { ShipSettings, Ship } from 'ship';
 import { RandomFactory } from 'random';
 
+import { Vector } from 'matter-js';
+
 module('Test Ship.js');
 
 test('ShipSettings set/get', (assert) => {
@@ -20,19 +22,7 @@ test('Ship._generateMesh', (assert) => {
 	let settings = new ShipSettings();
 	let randomFactory = new RandomFactory(0);
 	let ship = new Ship(randomFactory);
-	let debug = {};
-	ship._generateMesh(settings, debug);
-
-	console.log('--Ship.Create debug info');
-	console.log('vertices');
-	console.log(debug.vertices);
-	console.log('edges');
-	console.log(debug.edges);
-	console.log('centre');
-	console.log(debug.centre);
-	console.log('forward');
-	console.log(debug.forward);
-	console.log('--');
+	let mesh = ship._generateMesh(settings);
 
 	assert.ok(true, 'Ship create works');
 });

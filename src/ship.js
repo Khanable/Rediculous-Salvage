@@ -2,6 +2,7 @@ import { Engine, World, Bodies, Vertices, Vector } from 'matter-js';
 import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial, AxesHelper } from 'three';
 import { Renderer } from 'render.js';
 import { Decorate, IsInited } from 'util.js';
+import { AngleBetween, AngleBetweenSigned } from 'vector.js';
 
 export class ShipSettings {
 	constructor() {
@@ -114,6 +115,20 @@ class SymetryMeta {
 	}
 	get vertex() {
 		return this._list[this._index];
+	}
+}
+
+class Thruster {
+	constructor(position, dir) {
+		this._position = position;
+		this._dir = dir;
+	}
+
+	get position() {
+		this._position;
+	}
+	get dir() {
+		return this._dir;
 	}
 }
 
@@ -361,6 +376,32 @@ export class Ship {
 		return hullIndicies;
 	}
 
+	_getThrusters(vertices, hullEdges, centre) {
+		let rtn = [];
+		//1st
+		let index = this._random.nextIntRange(0, hullEdges.length-1);
+		let edge = hullEdges[index];
+		let p1 = vertices[edge.startIndex];
+		let p2 = vertices[edge.endIndex];
+		let relV = Vector.sub(p2, p1);
+		let unitRelV = Vector.normalise(relV);
+		let normal = Vector.create(-unitRelV.y, unitRelV.x);
+		let randDist = this._random.nextFloatRange(0, 1);
+		let thrusterPos = Vector.add(p1, Vector.mult(relV, randDist));
+		let centreV = Vector.sub(thrusterPos, centre);
+		let angleRange = 85*Math.PI/180;
+		let randAngle = this._random.nextFloatRange(-angleRange, angleRange);
+
+		//shire lebuff.
+
+		//2nd
+
+		//Others
+
+
+		return rtn;
+	}
+
 	_generateMesh(shipSettings) {
 		let rtn = {};
 
@@ -378,6 +419,7 @@ export class Ship {
 		let centre = Vertices.centre(hull);
 		//let forward = this._getForward(vertices, hullEdges, centre);
 		let forward = this._getForward(vertices, hullIndicies, hullEdges, centre);
+		let thrusters = this._getThrusters(vertices, hullEdges, centre);
 
 		rtn.circles = circles;
 		rtn.vertices = vertices;
@@ -386,6 +428,7 @@ export class Ship {
 		rtn.internalEdges = internalEdges;
 		rtn.centre = centre;
 		rtn.forward = forward;
+		rtn.thrusters = thrusters;
 		Object.freeze(rtn);
 		return rtn;
 	}
@@ -405,7 +448,7 @@ export class Ship {
 	_rotateForward(shipMeshData) {
 		let rtnData = Object.create(shipMeshData);
 
-		let angle = Vector.angle(Vector.create(0, 0), Vector.create(0, 1)) - Vector.angle(Vector.create(0, 0), rtnData.forward);
+		let angle = AngleBetweenSigned(Vector.create(0, 1), rtnData.forward);
 
 		let vertices = rtnData.vertices.map(e => Vector.create(e.x, e.y));
 		Vertices.rotate(vertices, angle, Vector.create(0, 0));
