@@ -12,6 +12,8 @@ export class ShipSettings {
 		this._maxCircleDistance = 3;
 		this._minExtraNodes = 5;
 		this._maxExtraNodes = 15;
+		this._minExtraThrusters = 0;
+		this._maxExtraThrusters = 5;
 	}
 
 	set(changes) {
@@ -119,9 +121,10 @@ class SymetryMeta {
 }
 
 class Thruster {
-	constructor(position, dir) {
+	constructor(position, dir, weight) {
 		this._position = position;
 		this._dir = dir;
+		this._weight = weight;
 	}
 
 	get position() {
@@ -129,6 +132,9 @@ class Thruster {
 	}
 	get dir() {
 		return this._dir;
+	}
+	get weight() {
+		return this._weight;
 	}
 }
 
@@ -376,28 +382,48 @@ export class Ship {
 		return hullIndicies;
 	}
 
-	_getThrusters(vertices, hullEdges, centre) {
-		let rtn = [];
-		//1st
+	_getThruster(settings, vertices, hullEdges, centre, targetWeight) {
+		let rtn = null;
 		let index = this._random.nextIntRange(0, hullEdges.length-1);
 		let edge = hullEdges[index];
 		let p1 = vertices[edge.startIndex];
 		let p2 = vertices[edge.endIndex];
 		let relV = Vector.sub(p2, p1);
-		let unitRelV = Vector.normalise(relV);
-		let normal = Vector.create(-unitRelV.y, unitRelV.x);
+		let unitRelVP1P2 = Vector.normalise(relV);
+		let unitRelVP2P1 = Vector.normalise(Vector.sub(p1, p2));
 		let randDist = this._random.nextFloatRange(0, 1);
-		let thrusterPos = Vector.add(p1, Vector.mult(relV, randDist));
-		let centreV = Vector.sub(thrusterPos, centre);
-		let angleRange = 85*Math.PI/180;
-		let randAngle = this._random.nextFloatRange(-angleRange, angleRange);
+		let position = Vector.add(p1, Vector.mult(relV, randDist));
+		let unitCentreV = Vector.sub(position, centre);
+		let leftAngle = AngleBetween(unitCentreV, unitRelVP2P1);
+		let rightAngle = 180 - leftAngle;
+		let angleRanges = [leftAngle, rightAngle];
+		let dirPick = this._random.nextIntRange(0, 1);
+		let angle = null;
+		let weight = null;
+		if ( targetWeight ) {
+			angle = targetWeight*angleRanges[dirPick];
+			weight = targetWeight;
+		}
+		else {
+			angle = this._random.nextFloatRange(0, angleRanges[dirPick]);
+			weight = rangeAngle/angleRanges[dirPick];
+		}
+		let dir = Vector.rotate(unitCentreV, dirPick ? -angle : angle);
+		return Thruster(position, dir, weight);
+	}
 
-		//shire lebuff.
+	_getThrusters(vertices, hullEdges, centre) {
+		let rtn = [];
 
-		//2nd
+		rtn.push(this._getThruster(vertices, hullEdges, centre));
+		rtn.push(this._getThruster(vertices, hullEdges, centre, 1-rtn[0].weight));
 
-		//Others
+		let numExtra = this._random.nextIntRange(settings.minExtraThrusters, settings.maxExtraThrusters);
+		for(let i = 0; i < numExtra; i++) {
+			rtn.push(this._getThruster(vertices, hullEdges, centre));
+		}
 
+		//Control keys here too.
 
 		return rtn;
 	}

@@ -320,3 +320,67 @@ export class ForwardLoader {
 }
 ForwardLoader.prototype.load = Decorate(ForwardLoader.prototype.load, StateFalseCheck);
 ForwardLoader.prototype.unload = Decorate(ForwardLoader.prototype.unload, StateTrueCheck);
+
+export class ThrustersLoader {
+	constructor() {
+		this._loaded = false;
+		this._transforms = null;
+		this._color = 0xff00ff;
+		this._depth = 13;
+		this._size = this._depth/pointSize;
+		this._dirLineLength = 3;
+	}
+
+	load(debug) {
+		let thrusters = debug.thrusters;
+
+		//Points
+		let geometry = new BufferGeometry();
+		let vertices = new Float32Array(thrusters.length*3);
+		for(let i = 0; i < thrusters.length; i++) {
+			let vIndex = i*3;
+			let pos = thrusters[i].position;
+			vertices[vIndex] = pos.x;
+			vertices[vIndex+1] = pos.y;
+			vertices[vIndex+2] = -this._depth;
+		}
+		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
+		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
+		this._transforms.push(Renderer.add(mesh));
+		
+		//Dir lines
+		geometry = new BufferGeometry();
+		vertices = new Float32Array(thrusters.length*6);
+		for(let i = 0; i < thrusters.length; i++) {
+			let vIndex = i*6;
+			let thruster = thrusters[i];
+			let p1 = thruster.position;
+			let p2 = Vector.add(p1, Vector.mult(thruster.dir, this._dirLineLength));
+			geometryVertices[vIndex] = p1.x;
+			geometryVertices[vIndex+1] = p1.y;
+			geometryVertices[vIndex+2] = -this._depth;
+			geometryVertices[vIndex+3] = p2.x;
+			geometryVertices[vIndex+4] = p2.y;
+			geometryVertices[vIndex+5] = -this._depth;
+		}
+		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
+		mesh = new LineSegments(geometry, new LineBasicMaterial({color: this._color}));
+		this._transforms.push(Renderer.add(mesh));
+
+		this._loaded = true;
+	}
+
+	unload() {
+		this._transforms.forEach( e => Renderer.remove(e) );
+
+		this._loaded = false;
+	}
+
+	get loaded() {
+		return this._loaded;
+	}
+}
+ForwardLoader.prototype.load = Decorate(ForwardLoader.prototype.load, StateFalseCheck);
+ForwardLoader.prototype.unload = Decorate(ForwardLoader.prototype.unload, StateTrueCheck);
+
+

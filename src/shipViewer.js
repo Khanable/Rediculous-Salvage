@@ -3,7 +3,7 @@ import { RandomFactory } from 'random.js';
 import { Update } from 'update.js';
 import { Renderer } from 'render.js';
 import { Vector3, AxesHelper } from 'three';
-import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, InternalEdgesLoader, CentreLoader, ForwardLoader } from 'shipViewerLoaders.js';
+import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, InternalEdgesLoader, CentreLoader, ForwardLoader, ThrustersLoader } from 'shipViewerLoaders.js';
 import 'string.js';
 import { StorageGetOrDefault, GetBoolFromStr, GetStrFromBool } from 'util.js';
 import { GetBits } from 'binary.js';
@@ -21,6 +21,7 @@ const stages = [
 	'InternalEdges',
 	'Centre',
 	'Forward',
+	'Thrusters',
 ];
 const stagesEnum = {}
 const stageLoaders = [
@@ -31,6 +32,7 @@ const stageLoaders = [
 	new InternalEdgesLoader(),
 	new CentreLoader(),
 	new ForwardLoader(),
+	new ThrustersLoader(),
 ];
 let centreAlign = false;
 let forwardAlign = false;
