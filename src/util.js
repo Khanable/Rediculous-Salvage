@@ -40,3 +40,6 @@ export const GetStrFromBool = function(bool) {
 	return bool ? true : false;
 }
 
+export const ToRad = function(degree) {
+	return degree/180*Math.PI;
+}

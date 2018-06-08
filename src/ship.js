@@ -1,7 +1,7 @@
-import { Engine, World, Bodies, Vertices, Vector } from 'matter-js';
+import { Engine, World, Bodies, Vertices, Vector, Common } from 'matter-js';
 import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial, AxesHelper } from 'three';
 import { Renderer } from 'render.js';
-import { Decorate, IsInited } from 'util.js';
+import { Decorate, IsInited, ToRad } from 'util.js';
 import { AngleBetween, AngleBetweenSigned } from 'vector.js';
 
 export class ShipSettings {
@@ -14,6 +14,7 @@ export class ShipSettings {
 		this._maxExtraNodes = 15;
 		this._minExtraThrusters = 0;
 		this._maxExtraThrusters = 5;
+		this._thrusterDisplayResolveAngle = ToRad(15);
 	}
 
 	set(changes) {
@@ -121,20 +122,24 @@ class SymetryMeta {
 }
 
 class Thruster {
-	constructor(position, dir, weight) {
+	constructor(position, dir, weight, hullEdge) {
 		this._position = position;
 		this._dir = dir;
 		this._weight = weight;
+		this._hullEdge = hullEdge;
 	}
 
 	get position() {
-		this._position;
+		return this._position;
 	}
 	get dir() {
 		return this._dir;
 	}
 	get weight() {
 		return this._weight;
+	}
+	get hullEdge() {
+		return this._hullEdge;
 	}
 }
 
@@ -393,34 +398,34 @@ export class Ship {
 		let unitRelVP2P1 = Vector.normalise(Vector.sub(p1, p2));
 		let randDist = this._random.nextFloatRange(0, 1);
 		let position = Vector.add(p1, Vector.mult(relV, randDist));
-		let unitCentreV = Vector.sub(position, centre);
+		let unitCentreV = Vector.normalise(Vector.sub(position, centre));
 		let leftAngle = AngleBetween(unitCentreV, unitRelVP2P1);
-		let rightAngle = 180 - leftAngle;
+		let rightAngle = Math.PI - leftAngle;
 		let angleRanges = [leftAngle, rightAngle];
 		let dirPick = this._random.nextIntRange(0, 1);
 		let angle = null;
-		let weight = null;
+		let angleRange = angleRanges[dirPick];
 		if ( targetWeight ) {
-			angle = targetWeight*angleRanges[dirPick];
-			weight = targetWeight;
+			angle = targetWeight*angleRange;
 		}
 		else {
-			angle = this._random.nextFloatRange(0, angleRanges[dirPick]);
-			weight = rangeAngle/angleRanges[dirPick];
+			angle = this._random.nextFloatRange(0, angleRange);
 		}
+		let weight = angle/angleRange;
 		let dir = Vector.rotate(unitCentreV, dirPick ? -angle : angle);
-		return Thruster(position, dir, weight);
+		dir = Vector.neg(dir);
+		return new Thruster(position, dir, weight, edge);
 	}
 
-	_getThrusters(vertices, hullEdges, centre) {
+	_getThrusters(settings, vertices, hullEdges, centre) {
 		let rtn = [];
 
-		rtn.push(this._getThruster(vertices, hullEdges, centre));
-		rtn.push(this._getThruster(vertices, hullEdges, centre, 1-rtn[0].weight));
+		rtn.push(this._getThruster(settings, vertices, hullEdges, centre));
+		rtn.push(this._getThruster(settings, vertices, hullEdges, centre, 1-rtn[0].weight));
 
 		let numExtra = this._random.nextIntRange(settings.minExtraThrusters, settings.maxExtraThrusters);
 		for(let i = 0; i < numExtra; i++) {
-			rtn.push(this._getThruster(vertices, hullEdges, centre));
+			rtn.push(this._getThruster(settings, vertices, hullEdges, centre));
 		}
 
 		//Control keys here too.
@@ -445,7 +450,7 @@ export class Ship {
 		let centre = Vertices.centre(hull);
 		//let forward = this._getForward(vertices, hullEdges, centre);
 		let forward = this._getForward(vertices, hullIndicies, hullEdges, centre);
-		let thrusters = this._getThrusters(vertices, hullEdges, centre);
+		let thrusters = this._getThrusters(settings, vertices, hullEdges, centre);
 
 		rtn.circles = circles;
 		rtn.vertices = vertices;
@@ -465,9 +470,11 @@ export class Ship {
 		let vertices = rtnData.vertices.map(e => Vector.create(e.x, e.y));
 		Vertices.translate(vertices, Vector.neg(rtnData.centre), 1);
 		let centre = Vector.add(rtnData.centre, Vector.neg(rtnData.centre));
+		let thrusters = rtnData.thrusters.map( e => new Thruster(Vector.add(e.position, Vector.neg(rtnData.centre)), e.dir, e.weight));
 
 		Object.defineProperty(rtnData, 'vertices', { value: vertices });
 		Object.defineProperty(rtnData, 'centre', { value: centre });
+		Object.defineProperty(rtnData, 'thrusters', { value: thrusters });
 		return Object.freeze(rtnData);
 	}
 
@@ -480,10 +487,12 @@ export class Ship {
 		Vertices.rotate(vertices, angle, Vector.create(0, 0));
 		let centre = Vector.rotate(rtnData.centre, angle, Vector.create(0, 0));
 		let forward = Vector.rotate(rtnData.forward, angle, Vector.create(0, 0));
+		let thrusters = rtnData.thrusters.map( e => new Thruster(Vector.rotate(e.position, angle, Vector.create(0, 0)), Vector.rotate(e.dir, angle, Vector.create(0, 0)), e.weight));
 
 		Object.defineProperty(rtnData, 'vertices', { value: vertices });
 		Object.defineProperty(rtnData, 'centre', { value: centre });
 		Object.defineProperty(rtnData, 'forward', { value: forward });
+		Object.defineProperty(rtnData, 'thrusters', { value: thrusters });
 		return Object.freeze(rtnData);
 	}
 
