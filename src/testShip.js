@@ -18,11 +18,13 @@ test('ShipSettings set/get', (assert) => {
 	assert.ok(changeResult[changeKey] == target, 'Setting changes work');
 });
 
-test('Ship._generateMesh', (assert) => {
+test('Ship._generate', (assert) => {
 	let settings = new ShipSettings();
 	let randomFactory = new RandomFactory(0);
 	let ship = new Ship(randomFactory);
-	let mesh = ship._generateMesh(settings);
+	let meta = ship._generate(settings);
+
+	console.log(meta);
 
 	assert.ok(true, 'Ship create works');
 });

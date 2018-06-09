@@ -15,6 +15,10 @@ export class ShipSettings {
 		this._minExtraThrusters = 0;
 		this._maxExtraThrusters = 5;
 		this._thrusterDisplayResolveAngle = ToRad(15);
+		this._thrusterAvailableKeys = new Array(26).fill(null).map( (e, i) => String.fromCharCode(97+i) );
+		this._thrusterKeyJoinWeightThreshold = 0.25; //Range should be between 0 - 0.5
+		this._minThrusterKeyOverlap = 1;
+		this._maxThrusterKeyOverlap = 5;
 	}
 
 	set(changes) {
@@ -35,7 +39,25 @@ export class ShipSettings {
 
 	get() {
 		let rtn = {};
-		let toPublic = Object.keys(this).forEach( e => rtn[e.slice(1)] = this[e] );
+		let toPublic = Object.keys(this).forEach( e => {
+			let v = this[e];
+			let type = typeof(this[e]);
+			let getter = null;
+			let privateName = e;
+			let publicName = e.slice(1);
+			if ( type == 'Array' ) {
+				getter = Object.freeze(function() {
+					return Array.from(this[privateName]);
+				});
+			}
+			else {
+				getter = Object.freeze(function() {
+					return this[privateName];
+				});
+			}
+			rtn[privateName] = this[privateName]
+			Object.defineProperty(rtn, publicName, { get: getter });
+		});
 		return Object.freeze(rtn);
 	}
 }
@@ -140,6 +162,21 @@ class Thruster {
 	}
 	get hullEdge() {
 		return this._hullEdge;
+	}
+}
+
+class ThrusterInput {
+	constructor(key, thrusters) {
+		this._key = key;
+		this._thrusters = thrusters;
+	}
+
+	get key() {
+		return this._key;
+	}
+
+	get thrusters() {
+		return Array.from(this._thrusters);
 	}
 }
 
@@ -360,7 +397,7 @@ export class Ship {
 
 
 		//Make some extra joins
-		let joins = this._random.nextIntRange(0, availableEdges.length-1);
+		let joins = this._random.nextIntRange(0, availableEdges.length);
 		for(let i = 0; i < joins; i++) {
 			if ( availableEdges.length > 0 ) {
 				let joinIndex = this._random.nextIntRange(0, availableEdges.length-1);
@@ -428,12 +465,76 @@ export class Ship {
 			rtn.push(this._getThruster(settings, vertices, hullEdges, centre));
 		}
 
-		//Control keys here too.
+		return rtn;
+	}
+
+	_getKeys(settings, thrusters) {
+		//Will always be at least 2 thrusters
+		let rtn = [];
+		let availableKeys = settings.thrusterAvailableKeys;
+		let getKey = () => {
+			return availableKeys.splice(this._random.nextIntRange(0, availableKeys.length-1), 1)[0];
+		}
+
+		//Add keys to first 2 thrusters
+		for(let i = 0; i < 2; i++ ) {
+			let thruster = thrusters[i];
+			rtn.push(new ThrusterInput(getKey(), [thruster]));
+		}
+
+		//Should Join 0 and 1, if both thrusters weighted more towards rotation then translation
+		let testThresold = settings.thrusterKeyJoinWeightThreshold*2;
+		let threshold = thrusters[0].weight - testThresold;
+		let addedJoin = false;
+		if ( threshold >= 0 && threshold <= testThresold ) {
+			rtn.push(new ThrusterInput(getKey(), thrusters.slice(0, 2)));
+			addedJoin = true;
+		}
+
+		//Ensure assign keys to remaining thrusters, to ensure each key has input.
+		let thrustersToAssign = thrusters.slice(2);
+		let getThruster = () => {
+			return thrustersToAssign.splice(this._random.nextIntRange(0, thrustersToAssign.length-1), 1)[0];
+		}
+		while( thrustersToAssign.length > 0 ) {
+			if ( availableKeys.length > 0 ) {
+				let numToLink = this._random.nextIntRange(1, thrustersToAssign.length);
+				let linked = new Array(numToLink).fill(null).map( () => getThruster() );
+				rtn.push(new ThrusterInput(getKey(), linked));
+			}
+			else {
+				break;
+			}
+		}
+
+		//Inject thrusters into key mapping to get some overlap
+		let numOverlaps = this._random.nextIntRange(settings.minThrusterKeyOverlap, settings.maxThrusterKeyOverlap);
+		let inputs = Array.from(rtn);
+		//Dont allow changing the bare minimum controllabilty mappings
+		let targets = rtn.slice(addedJoin ? 3 : 2);
+		if ( targets.length > 0 ) {
+			for(let i = 0; i < numOverlaps; i++) {
+				let src = inputs[this._random.nextIntRange(0, inputs.length-1)];
+				let dst = targets[this._random.nextIntRange(0, targets.length-1)];
+				rtn.splice(rtn.indexOf(dst), 1);
+				//Take some thrusters from src ThrusterInput and apply to dst, wont need to check for internal duplicates this way
+				let srcThrusters = src.thrusters;
+				let picked = [];
+				let numPick = this._random.nextIntRange(1, srcThrusters.length);
+				let getThruster = () => {
+					return srcThrusters.splice(this._random.nextIntRange(0, srcThrusters.length-1), 1)[0]
+				}
+				for(let j = 0; j < numPick; j++) {
+					picked.push(getThruster());
+				}
+				rtn.push(new ThrusterInput(dst.key, dst.thrusters.concat(picked)));
+			}
+		}
 
 		return rtn;
 	}
 
-	_generateMesh(shipSettings) {
+	_generate(shipSettings) {
 		let rtn = {};
 
 		let settings = shipSettings.get();
@@ -451,6 +552,7 @@ export class Ship {
 		//let forward = this._getForward(vertices, hullEdges, centre);
 		let forward = this._getForward(vertices, hullIndicies, hullEdges, centre);
 		let thrusters = this._getThrusters(settings, vertices, hullEdges, centre);
+		let keys = this._getKeys(settings, thrusters);
 
 		rtn.circles = circles;
 		rtn.vertices = vertices;
@@ -460,12 +562,13 @@ export class Ship {
 		rtn.centre = centre;
 		rtn.forward = forward;
 		rtn.thrusters = thrusters;
+		rtn.keys = keys;
 		Object.freeze(rtn);
 		return rtn;
 	}
 
-	_translateCentre(shipMeshData) {
-		let rtnData = Object.create(shipMeshData);
+	_translateCentre(shipMetaData) {
+		let rtnData = Object.create(shipMetaData);
 
 		let vertices = rtnData.vertices.map(e => Vector.create(e.x, e.y));
 		Vertices.translate(vertices, Vector.neg(rtnData.centre), 1);
@@ -478,8 +581,8 @@ export class Ship {
 		return Object.freeze(rtnData);
 	}
 
-	_rotateForward(shipMeshData) {
-		let rtnData = Object.create(shipMeshData);
+	_rotateForward(shipMetaData) {
+		let rtnData = Object.create(shipMetaData);
 
 		let angle = AngleBetweenSigned(Vector.create(0, 1), rtnData.forward);
 
@@ -498,15 +601,15 @@ export class Ship {
 
 	init(shipSettings) {
 		if ( !this._inited ) { 
-			let meshData = this._generateMesh(shipSettings);
-			meshData = this._translateCentre(meshData);
-			meshData = this._rotateForward(meshData);
+			let metaData = this._generate(shipSettings);
+			metaData = this._translateCentre(metaData);
+			metaData = this._rotateForward(metaData);
 
 			let geometry = new BufferGeometry();
-			let geometryVerts = new Float32Array(meshData.vertices.length*3);
-			let allEdges = meshData.edges.concat(meshData.hullEdges);
+			let geometryVerts = new Float32Array(metaData.vertices.length*3);
+			let allEdges = metaData.edges.concat(metaData.hullEdges);
 			let geometryIndices = new Array(allEdges.length*2).fill(null);
-			meshData.vertices.forEach( (e, i) => {
+			metaData.vertices.forEach( (e, i) => {
 				let index = i*3;
 				geometryVerts[index] = e.x;
 				geometryVerts[index+1] = e.y;

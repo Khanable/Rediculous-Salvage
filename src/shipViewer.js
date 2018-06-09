@@ -10,8 +10,9 @@ import { GetBits } from 'binary.js';
 
 
 const storage = window.sessionStorage;
-let shipMeshData = null;
+let shipMetaData = null;
 let inputHandlers = [];
+let displayUpdate = [];
 let curSeed = '0';
 const stages = [
 	'Circles',
@@ -52,14 +53,14 @@ const generateShip = function(seed) {
 	const randomFactory = new RandomFactory(parseInt(seed));
 	const ship = new Ship(randomFactory);
 	let settings = new ShipSettings();
-	shipMeshData = ship._generateMesh(settings);
+	shipMetaData = ship._generate(settings);
 
 	if ( centreAlign ) {
-		shipMeshData = ship._translateCentre(shipMeshData);
+		shipMetaData = ship._translateCentre(shipMetaData);
 	}
 
 	if ( forwardAlign ) {
-		shipMeshData = ship._rotateForward(shipMeshData);
+		shipMetaData = ship._rotateForward(shipMetaData);
 	}
 
 	storage.setItem('curSeed', curSeed);
@@ -67,9 +68,11 @@ const generateShip = function(seed) {
 	stageLoaders.forEach( e => {
 		if ( e.loaded ) {
 			e.unload();
-			e.load(shipMeshData);
+			e.load(shipMetaData);
 		}
 	});
+
+	displayUpdate.forEach( e => e(shipMetaData) );
 }
 
 const handleSetSeed = function() {
@@ -205,7 +208,7 @@ const handleShipStage = function() {
 				let state = stageLoaders[curStage].loaded;
 
 				if ( !state ) {
-					stageLoaders[curStage].load(shipMeshData);
+					stageLoaders[curStage].load(shipMetaData);
 					domStages[curStage].setAttribute('style', getStyle(curStage));
 				}
 				else {
@@ -271,6 +274,50 @@ const handleCentreAxes = function() {
 inputHandlers.push(handleCentreAxes);
 
 
+const handleThrusterKeys = function() {
+	let domRoot = null;
+	let shown = GetBoolFromStr(StorageGetOrDefault(storage, 'showThrusterKeys', 'false'));
+	let update = function(shipMetaData) {
+		if ( shown ) {
+			if ( domRoot != null ) {
+				document.body.removeChild(domRoot);
+			}
+			domRoot = document.createElement('div');
+			domRoot.setAttribute('style', 'position:absolute;background:white;left:0px;bottom:0px;width:250px;height:400px;');
+			shipMetaData.keys.forEach( k => {
+				let e = document.createElement('div');
+				e.innerText = '{0} - {1}'.format(k.key, k.thrusters.length);
+				domRoot.appendChild(e);
+			});
+
+			document.body.appendChild(domRoot);
+		}
+		else {
+			if ( domRoot != null ) {
+				document.body.removeChild(domRoot);
+				domRoot = null;
+			}
+		}
+	}
+	displayUpdate.push(update);
+
+	return function(key) {
+		let rtn = false;
+
+		if ( key == 'e' ) {
+			shown = shown ? false : true;
+			storage.setItem('showThrusterKeys', GetStrFromBool(shown));
+			update(shipMetaData);
+
+			rtn = true;
+		}
+
+		return rtn;
+	}
+}
+inputHandlers.push(handleThrusterKeys);
+
+
 
 const keyPress = function(key) {
 	for(let handler of inputHandlers) {
@@ -301,7 +348,7 @@ const main = function() {
 	loadStages.forEach( (e, i) => {
 		if ( e ) {
 			let stage = stageLoaders[i];
-			stage.load(shipMeshData);
+			stage.load(shipMetaData);
 		}
 	});
 

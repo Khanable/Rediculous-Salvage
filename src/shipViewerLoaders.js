@@ -2,6 +2,7 @@ import { Renderer } from 'render.js';
 import { Decorate } from 'util.js';
 import { LineLoop, BufferGeometry, BufferAttribute, LineBasicMaterial, PointsMaterial, Points, LineSegments, BoxBufferGeometry, MeshBasicMaterial, Mesh } from 'three';
 import { Vector } from 'matter-js';
+import 'string.js'
 
 let pointSize = 0.04;
 pointSize = 1/pointSize;
@@ -325,7 +326,8 @@ export class ThrustersLoader {
 	constructor() {
 		this._loaded = false;
 		this._transforms = null;
-		this._color = 0xff00ff;
+		//0 - Linked, 1 - Unlinked
+		this._colors = [0xff00ff, 0xff0000];
 		this._depth = 13;
 		this._size = this._depth/pointSize;
 		this._dirLineLength = 3;
@@ -334,39 +336,68 @@ export class ThrustersLoader {
 	load(debug) {
 		this._transforms = [];
 		let thrusters = debug.thrusters;
+		let keys = debug.keys;
 
-		//Points
-		let geometry = new BufferGeometry();
-		let vertices = new Float32Array(thrusters.length*3);
-		for(let i = 0; i < thrusters.length; i++) {
-			let vIndex = i*3;
-			let pos = thrusters[i].position;
-			vertices[vIndex] = pos.x;
-			vertices[vIndex+1] = pos.y;
-			vertices[vIndex+2] = -this._depth;
+		//Check for any thrusters not linked to any keys
+		let unlinkedThrusters = [];
+		let linkedThrusters = [];
+		thrusters.forEach( t => {
+			let found = false;
+			for(let key of keys) {
+				if ( key.thrusters.includes(t) ) {
+					found = true;
+					break;
+				}
+			}
+			if ( !found ) {
+				unlinkedThrusters.push(t);
+			}
+			else {
+				linkedThrusters.push(t);
+			}
+		});
+
+		if ( unlinkedThrusters.length > 0 ) {
+			console.log('Have {0} unlinked thrusters!'.format(unlinkedThrusters.length));
 		}
-		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
-		let mesh = new Points(geometry, new PointsMaterial({color: this._color, size: this._size}));
-		this._transforms.push(Renderer.add(mesh));
-		
-		//Dir lines
-		geometry = new BufferGeometry();
-		vertices = new Float32Array(thrusters.length*6);
-		for(let i = 0; i < thrusters.length; i++) {
-			let vIndex = i*6;
-			let thruster = thrusters[i];
-			let p1 = thruster.position;
-			let p2 = Vector.add(p1, Vector.mult(Vector.neg(thruster.dir), this._dirLineLength));
-			vertices[vIndex] = p1.x;
-			vertices[vIndex+1] = p1.y;
-			vertices[vIndex+2] = -this._depth;
-			vertices[vIndex+3] = p2.x;
-			vertices[vIndex+4] = p2.y;
-			vertices[vIndex+5] = -this._depth;
-		}
-		geometry.addAttribute('position', new BufferAttribute(vertices, 3));
-		mesh = new LineSegments(geometry, new LineBasicMaterial({color: this._color}));
-		this._transforms.push(Renderer.add(mesh));
+
+		let thrusterLists = [linkedThrusters, unlinkedThrusters];
+		thrusterLists.forEach( (e, i) => {
+			let thrusters = e;
+			let color = this._colors[i];
+			//Points
+			let geometry = new BufferGeometry();
+			let vertices = new Float32Array(thrusters.length*3);
+			for(let i = 0; i < thrusters.length; i++) {
+				let vIndex = i*3;
+				let pos = thrusters[i].position;
+				vertices[vIndex] = pos.x;
+				vertices[vIndex+1] = pos.y;
+				vertices[vIndex+2] = -this._depth;
+			}
+			geometry.addAttribute('position', new BufferAttribute(vertices, 3));
+			let mesh = new Points(geometry, new PointsMaterial({color: color, size: this._size}));
+			this._transforms.push(Renderer.add(mesh));
+			
+			//Dir lines
+			geometry = new BufferGeometry();
+			vertices = new Float32Array(thrusters.length*6);
+			for(let i = 0; i < thrusters.length; i++) {
+				let vIndex = i*6;
+				let thruster = thrusters[i];
+				let p1 = thruster.position;
+				let p2 = Vector.add(p1, Vector.mult(Vector.neg(thruster.dir), this._dirLineLength));
+				vertices[vIndex] = p1.x;
+				vertices[vIndex+1] = p1.y;
+				vertices[vIndex+2] = -this._depth;
+				vertices[vIndex+3] = p2.x;
+				vertices[vIndex+4] = p2.y;
+				vertices[vIndex+5] = -this._depth;
+			}
+			geometry.addAttribute('position', new BufferAttribute(vertices, 3));
+			mesh = new LineSegments(geometry, new LineBasicMaterial({color: color}));
+			this._transforms.push(Renderer.add(mesh));
+		});
 
 		this._loaded = true;
 	}
