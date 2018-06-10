@@ -252,6 +252,12 @@ inputHandlers.push(handleShipTransformation);
 
 
 const handleCentreAxes = function() {
+	let axes = GetBoolFromStr(StorageGetOrDefault(storage, 'axes', 'true'));
+
+	if ( axes ) {
+		addAxes();
+	}
+
 	return function(key) {
 		let rtn = false;
 
@@ -284,6 +290,9 @@ const handleThrusterKeys = function() {
 			}
 			domRoot = document.createElement('div');
 			domRoot.setAttribute('style', 'position:absolute;background:white;left:0px;bottom:0px;width:250px;height:400px;');
+			let header = document.createElement('div');
+			header.innerText = 'Keys: {0} | Thrusters: {1}'.format(shipMetaData.keys.length, shipMetaData.thrusters.length);
+			domRoot.appendChild(header);
 			shipMetaData.keys.forEach( k => {
 				let e = document.createElement('div');
 				e.innerText = '{0} - {1}'.format(k.key, k.thrusters.length);
@@ -340,23 +349,18 @@ const main = function() {
 	curSeed = StorageGetOrDefault(storage, 'curSeed', '0');
 	centreAlign = GetBoolFromStr(StorageGetOrDefault(storage, 'centreAlign', 'false'));
 	forwardAlign = GetBoolFromStr(StorageGetOrDefault(storage, 'forwardAlign', 'false'));
-	let axes = GetBoolFromStr(StorageGetOrDefault(storage, 'axes', 'true'));
-	let loadStagesV = StorageGetOrDefault(storage, 'stages', Math.pow(2, stageLoaders.length)-1);
-	let loadStages = GetBits(loadStagesV);
+
+	inputHandlers = inputHandlers.map( e => e() );
 
 	generateShip(curSeed);
+
+	let loadStagesV = StorageGetOrDefault(storage, 'stages', Math.pow(2, stageLoaders.length)-1);
+	let loadStages = GetBits(loadStagesV);
 	loadStages.forEach( (e, i) => {
 		if ( e ) {
 			let stage = stageLoaders[i];
 			stage.load(shipMetaData);
 		}
 	});
-
-
-	if ( axes ) {
-		addAxes();
-	}
-
-	inputHandlers = inputHandlers.map( e => e() );
 }
 window.addEventListener('load', main);

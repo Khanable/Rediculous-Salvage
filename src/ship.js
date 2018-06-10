@@ -436,21 +436,22 @@ export class Ship {
 		let randDist = this._random.nextFloatRange(0, 1);
 		let position = Vector.add(p1, Vector.mult(relV, randDist));
 		let unitCentreV = Vector.normalise(Vector.sub(position, centre));
-		let leftAngle = AngleBetween(unitCentreV, unitRelVP2P1);
-		let rightAngle = Math.PI - leftAngle;
-		let angleRanges = [leftAngle, rightAngle];
+		let rightAngle = AngleBetween(unitCentreV, unitRelVP2P1);
+		let leftAngle = Math.PI - rightAngle;
+		let angleRanges = [rightAngle, leftAngle];
 		let dirPick = this._random.nextIntRange(0, 1);
 		let angle = null;
 		let angleRange = angleRanges[dirPick];
-		if ( targetWeight ) {
+		if ( targetWeight != undefined ) {
 			angle = targetWeight*angleRange;
 		}
 		else {
 			angle = this._random.nextFloatRange(0, angleRange);
 		}
 		let weight = angle/angleRange;
-		let dir = Vector.rotate(unitCentreV, dirPick ? -angle : angle);
+		let dir = Vector.rotate(unitCentreV, dirPick ? angle : -angle, Vector.create(0, 0));
 		dir = Vector.neg(dir);
+
 		return new Thruster(position, dir, weight, edge);
 	}
 
@@ -464,7 +465,7 @@ export class Ship {
 		for(let i = 0; i < numExtra; i++) {
 			rtn.push(this._getThruster(settings, vertices, hullEdges, centre));
 		}
-
+		
 		return rtn;
 	}
 
@@ -478,8 +479,7 @@ export class Ship {
 
 		//Add keys to first 2 thrusters
 		for(let i = 0; i < 2; i++ ) {
-			let thruster = thrusters[i];
-			rtn.push(new ThrusterInput(getKey(), [thruster]));
+			rtn.push(new ThrusterInput(getKey(), [i]));
 		}
 
 		//Should Join 0 and 1, if both thrusters weighted more towards rotation then translation
@@ -487,12 +487,12 @@ export class Ship {
 		let threshold = thrusters[0].weight - testThresold;
 		let addedJoin = false;
 		if ( threshold >= 0 && threshold <= testThresold ) {
-			rtn.push(new ThrusterInput(getKey(), thrusters.slice(0, 2)));
+			rtn.push(new ThrusterInput(getKey(), [0, 1]));
 			addedJoin = true;
 		}
 
 		//Ensure assign keys to remaining thrusters, to ensure each key has input.
-		let thrustersToAssign = thrusters.slice(2);
+		let thrustersToAssign = thrusters.map( (e, i) => i ).slice(2);
 		let getThruster = () => {
 			return thrustersToAssign.splice(this._random.nextIntRange(0, thrustersToAssign.length-1), 1)[0];
 		}
@@ -514,15 +514,18 @@ export class Ship {
 		let targets = rtn.slice(addedJoin ? 3 : 2);
 		if ( targets.length > 0 ) {
 			for(let i = 0; i < numOverlaps; i++) {
+				//Take some thrusters from src ThrusterInput and apply to dst, wont need to check for internal duplicates this way
 				let src = inputs[this._random.nextIntRange(0, inputs.length-1)];
+				//src != dst
+				//still need to check for internal duplicates and strip
+				//perform on case by case basis. find somewhere to put a src thurster, if cant, drop.
 				let dst = targets[this._random.nextIntRange(0, targets.length-1)];
 				rtn.splice(rtn.indexOf(dst), 1);
-				//Take some thrusters from src ThrusterInput and apply to dst, wont need to check for internal duplicates this way
 				let srcThrusters = src.thrusters;
 				let picked = [];
 				let numPick = this._random.nextIntRange(1, srcThrusters.length);
 				let getThruster = () => {
-					return srcThrusters.splice(this._random.nextIntRange(0, srcThrusters.length-1), 1)[0]
+					return srcThrusters.splice(this._random.nextIntRange(0, srcThrusters.length-1), 1)[0];
 				}
 				for(let j = 0; j < numPick; j++) {
 					picked.push(getThruster());

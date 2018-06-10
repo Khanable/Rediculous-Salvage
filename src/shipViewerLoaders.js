@@ -341,10 +341,10 @@ export class ThrustersLoader {
 		//Check for any thrusters not linked to any keys
 		let unlinkedThrusters = [];
 		let linkedThrusters = [];
-		thrusters.forEach( t => {
+		thrusters.forEach( (t,tI) => {
 			let found = false;
 			for(let key of keys) {
-				if ( key.thrusters.includes(t) ) {
+				if ( key.thrusters.includes(tI) ) {
 					found = true;
 					break;
 				}
