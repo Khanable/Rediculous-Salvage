@@ -6,19 +6,19 @@ import { AngleBetween, AngleBetweenSigned } from 'vector.js';
 
 export class ShipSettings {
 	constructor() {
-		this._minCircles = 2;
-		this._maxCircles = 5;
+		this._minCircles = 3;
+		this._maxCircles = 6;
 		this._minCircleDistance = 0.05;
-		this._maxCircleDistance = 3;
-		this._minExtraNodes = 5;
-		this._maxExtraNodes = 15;
+		//Max ship radius
+		this._maxCircleDistance = 4;
+		this._minExtraNodes = 12;
+		this._maxExtraNodes = 18;
 		this._minExtraThrusters = 0;
-		this._maxExtraThrusters = 5;
+		this._maxExtraThrusters = 12;
+		this._maxThrustersPerKey = 2;
 		this._thrusterDisplayResolveAngle = ToRad(15);
 		this._thrusterAvailableKeys = new Array(26).fill(null).map( (e, i) => String.fromCharCode(97+i) );
 		this._thrusterKeyJoinWeightThreshold = 0.25; //Range should be between 0 - 0.5
-		this._minThrusterKeyOverlap = 1;
-		this._maxThrusterKeyOverlap = 5;
 	}
 
 	set(changes) {
@@ -498,7 +498,7 @@ export class Ship {
 		}
 		while( thrustersToAssign.length > 0 ) {
 			if ( availableKeys.length > 0 ) {
-				let numToLink = this._random.nextIntRange(1, thrustersToAssign.length);
+				let numToLink = this._random.nextIntRange(1, Math.min(settings.maxThrustersPerKey, thrustersToAssign.length));
 				let linked = new Array(numToLink).fill(null).map( () => getThruster() );
 				rtn.push(new ThrusterInput(getKey(), linked));
 			}
@@ -508,31 +508,33 @@ export class Ship {
 		}
 
 		//Inject thrusters into key mapping to get some overlap
-		let numOverlaps = this._random.nextIntRange(settings.minThrusterKeyOverlap, settings.maxThrusterKeyOverlap);
-		let inputs = Array.from(rtn);
-		//Dont allow changing the bare minimum controllabilty mappings
-		let targets = rtn.slice(addedJoin ? 3 : 2);
-		if ( targets.length > 0 ) {
-			for(let i = 0; i < numOverlaps; i++) {
-				//Take some thrusters from src ThrusterInput and apply to dst, wont need to check for internal duplicates this way
-				let src = inputs[this._random.nextIntRange(0, inputs.length-1)];
-				//src != dst
-				//still need to check for internal duplicates and strip
-				//perform on case by case basis. find somewhere to put a src thurster, if cant, drop.
-				let dst = targets[this._random.nextIntRange(0, targets.length-1)];
-				rtn.splice(rtn.indexOf(dst), 1);
-				let srcThrusters = src.thrusters;
-				let picked = [];
-				let numPick = this._random.nextIntRange(1, srcThrusters.length);
-				let getThruster = () => {
-					return srcThrusters.splice(this._random.nextIntRange(0, srcThrusters.length-1), 1)[0];
-				}
-				for(let j = 0; j < numPick; j++) {
-					picked.push(getThruster());
-				}
-				rtn.push(new ThrusterInput(dst.key, dst.thrusters.concat(picked)));
+		let offset = addedJoin ? 3 : 2;
+		let thrusterIndexs = new Array(thrusters.length).fill(null).map( (e, i) => i );
+		let inputIndexs = new Array(rtn.length-offset).fill(null).map( (e, i) => i+offset );
+		let inputThrusters = new Array(inputIndexs.length).fill(null).map( (e,i) => rtn[inputIndexs[i]].thrusters );
+		let availableInputThrusters = new Array(inputThrusters.length).fill(null).map( (e,i) => thrusterIndexs.filter( f => !inputThrusters[i].includes(f) ));
+		let getAvailableInputThrustersIndexs = () => availableInputThrusters.map( (e,i) => i ).filter( i => availableInputThrusters[i].length > 0 );
+
+		//If key to thruster distrubution low, do less overlaps, else do more.
+		let numOverlaps = Math.max(rtn.length-offset);
+		for(let i = 0; i < numOverlaps; i++) {
+			let hasAvailableThrusterListPool = getAvailableInputThrustersIndexs();
+			if ( hasAvailableThrusterListPool.length > 0  ) {
+				let srcIndex = hasAvailableThrusterListPool[this._random.nextIntRange(0, hasAvailableThrusterListPool.length-1)];
+				let curInputThrusters = inputThrusters[srcIndex];
+				let thrusterPool = availableInputThrusters[srcIndex];
+				let pick = thrusterPool.splice(this._random.nextIntRange(0, thrusterPool.length-1), 1)[0];
+				curInputThrusters.push(pick);
+			}
+			else {
+				break;
 			}
 		}
+
+		inputIndexs.forEach( (e,i) => { 
+			let prev = rtn[e];
+			rtn[e]  = new ThrusterInput(prev.key, inputThrusters[i]);
+		});
 
 		return rtn;
 	}

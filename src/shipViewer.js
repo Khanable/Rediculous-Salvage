@@ -118,6 +118,14 @@ const handleSetSeed = function() {
 				seed = seed.slice(0, seed.length-1);
 				changed = true;
 			}
+			else if ( key == 'ArrowRight' || key == 'ArrowLeft' ) {
+				let change = -1;
+				if ( key == 'ArrowRight' ) {
+					change = 1;
+				}
+				seed = (Math.max(0, parseInt(seed)+change)).toString();
+				changed = true;
+			}
 
 			if ( changed ) {
 				domText.innerText = seed;
