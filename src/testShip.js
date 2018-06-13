@@ -4,7 +4,7 @@ import { RandomFactory } from 'random';
 
 import { Vector } from 'matter-js';
 
-module('Test Ship.js');
+module('testShip.js');
 
 test('ShipSettings set/get', (assert) => {
 	let settings = new ShipSettings();

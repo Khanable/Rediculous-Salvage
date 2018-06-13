@@ -1,12 +1,3 @@
-export const IsInited = function(func, args) {
-	if ( this._inited ) {
-		return func.apply(this, args);
-	}
-	else {
-		throw new Error('Not inited');
-	}
-}
-
 export const Decorate = function(func, decorator) {
 	return function() { return decorator.call(this, func, arguments) }
 }

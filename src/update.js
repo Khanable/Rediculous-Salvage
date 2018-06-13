@@ -1,35 +1,23 @@
 import { Subject, ReplaySubject } from 'rxjs';
-import { Decorate, DecorateDescriptor, IsInited } from 'util.js';
 
-export class _Update {
+export class LoopController {
 
 	constructor() {
-		this._update = null;
-		this._render = null;
+		this._updateLoop = null;
+		this._renderLoop = null;
 
-		this._inited = false;
-	}
+		this._updateLoop = new Subject();
+		this._renderLoop = new Subject();
 
-	init() {
-		if ( !this._inited ) {
-			this._update = new Subject();
-			this._render = new Subject();
-
-			document.addEventListener('visibilitychange', () => {
-				if ( document.visibilityState == 'hidden' && this._running ) {
-					this._wasRunning = true;
-					this.stop();
-				}
-				else if ( document.visibilityState == 'visible' && this._wasRunning ) {
-					this.start();
-				}
-			});
-
-			this._inited = true;
-		}
-		else {
-			throw new Error('Already inited');
-		}
+		document.addEventListener('visibilitychange', () => {
+			if ( document.visibilityState == 'hidden' && this._running ) {
+				this._wasRunning = true;
+				this.stop();
+			}
+			else if ( document.visibilityState == 'visible' && this._wasRunning ) {
+				this.start();
+			}
+		});
 	}
 
 	_reset() {
@@ -39,11 +27,11 @@ export class _Update {
 		this._callbackID = null;
 	}
 
-	get render() {
-		return this._render;
+	get renderLoop() {
+		return this._renderLoop;
 	}
-	get update() {
-		return this._update;
+	get updateLoop() {
+		return this._updateLoop;
 	}
 
 	_loop(time) {
@@ -58,8 +46,8 @@ export class _Update {
 		}
 		this._lastT = time;
 
-		this._update.next(dt);
-		this._render.next(dt);
+		this._updateLoop.next(dt);
+		this._renderLoop.next(dt);
 
 		this._callbackID = window.requestAnimationFrame(this._loop.bind(this));
 	}
@@ -85,10 +73,5 @@ export class _Update {
 			throw new Error('Not running');
 		}
 	}
-}
-DecorateDescriptor(_Update.prototype, 'render', IsInited, 'get');
-DecorateDescriptor(_Update.prototype, 'update', IsInited, 'get');
-_Update.prototype.start = Decorate(_Update.prototype.start, IsInited);
-_Update.prototype.stop = Decorate(_Update.prototype.stop, IsInited);
 
-export const Update = new _Update();
+}

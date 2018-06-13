@@ -1,41 +1,23 @@
-import { Update } from 'update.js';
 import { WebGLRenderer, Scene, PerspectiveCamera, Vector3, OrthographicCamera } from 'three';
-import { Decorate, IsInited } from 'util.js';
 
-class _Renderer {
-	constructor() {
-		this._update = Update;
-		this._inited = false;
-
+export class Renderer {
+	constructor(renderLoop) {
 		this._renderer = null;
 		this._scene = null;
 		this._camera = null;
-	}
 
-	init() {
-		if ( !this._inited ) {
-			document.body.setAttribute('style', 'margin:0px;');
-			this._renderer = new WebGLRenderer();
-			this._scene = new Scene();
-			this._camera = new OrthographicCamera();
-			this._scene.add(this._camera);
-			this._renderer.domElement.setAttribute('style', 'display:block;');
-			document.body.appendChild(this._renderer.domElement);
+		document.body.setAttribute('style', 'margin:0px;');
+		this._renderer = new WebGLRenderer();
+		this._scene = new Scene();
+		this._camera = new OrthographicCamera();
+		this._scene.add(this._camera);
+		this._renderer.domElement.setAttribute('style', 'display:block;');
+		document.body.appendChild(this._renderer.domElement);
 
-			window.addEventListener('resize', this._resize.bind(this));
-			this._update.update.subscribe(this._render.bind(this));
+		window.addEventListener('resize', this._resize.bind(this));
+		renderLoop.subscribe(this._render.bind(this));
 
-			this._resize();
-
-			this._inited = true;
-		}
-		else {
-			throw new Error('Already inited');
-		}
-	}
-
-	get inited() {
-		return this._inited;
+		this._resize();
 	}
 
 	_resize() {
@@ -63,12 +45,8 @@ class _Renderer {
 		this._scene.add(obj);
 		return obj;
 	}
+
 	remove(obj) {
 		this._scene.remove(obj);
 	}
 }
-_Renderer.prototype.add = Decorate(_Renderer.prototype.add, IsInited);
-_Renderer.prototype.remove = Decorate(_Renderer.prototype.remove, IsInited);
-
-
-export const Renderer = new _Renderer();
