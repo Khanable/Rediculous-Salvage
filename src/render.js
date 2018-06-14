@@ -1,52 +1,107 @@
-import { WebGLRenderer, Scene, PerspectiveCamera, Vector3, OrthographicCamera } from 'three';
+import { WebGLRenderer, Scene, OrthographicCamera, Object3D } from 'three';
+import { Vector2 } from 'vector.js';
+import 'array.js';
+
+export class CameraProjection {
+	constructor(left, right, top, bottom, aspect) {
+		this._left = left;
+		this._right = right;
+		this._top = top;
+		this._bottom = bottom;
+		this._aspect = aspect;
+	}
+	get left() {
+		return this._left;
+	}
+	get right() {
+		return this._right;
+	}
+	get top() {
+		return this._top;
+	}
+	get bottom() {
+		return this._bottom;
+	}
+	get aspect() {
+		return this._aspect;
+	}
+}
+
+export class CameraPos {
+	constructor(pos, zoom) {
+		this._pos = pos;
+		this._zoom = zoom;
+	}
+
+	get pos() {
+		return this._pos;
+	}
+	get zoom() {
+		return this._zoom;
+	}
+}
 
 export class Renderer {
-	constructor(renderLoop) {
+	constructor() {
 		this._renderer = null;
 		this._scene = null;
 		this._camera = null;
+		this._containerSize = null;
+		this._entities = [];
 
-		document.body.setAttribute('style', 'margin:0px;');
 		this._renderer = new WebGLRenderer();
 		this._scene = new Scene();
 		this._camera = new OrthographicCamera();
 		this._scene.add(this._camera);
-		this._renderer.domElement.setAttribute('style', 'display:block;');
-		document.body.appendChild(this._renderer.domElement);
-
-		window.addEventListener('resize', this._resize.bind(this));
-		renderLoop.subscribe(this._render.bind(this));
-
-		this._resize();
 	}
 
-	_resize() {
-		let windowSize = [window.innerWidth, window.innerHeight];
-		let aspect = windowSize[0]/windowSize[1];
+	get domElement() {
+		return this._renderer.domElement;
+	}
+	get cameraProjection() {
+		return new CameraProjection(this._camera.left, this._camera.right, this._camera.top, this._camera.bottom, this._camera.aspect);
+	}
+	get size() {
+		return Vector2.from(this._renderer.size);
+	}
+
+	resize(containerSize) {
+		this._containerSize = containerSize;
+		let aspect = containerSize.x/containerSize.y;
 		aspect*=this._camera.position.z;
 		this._camera.left = -aspect;
 		this._camera.right = aspect;
 		this._camera.top = this._camera.position.z;
 		this._camera.bottom = -this._camera.position.z;
 		this._camera.updateProjectionMatrix();
-		this._renderer.setSize(windowSize[0], windowSize[1]);
+		this._renderer.setSize(containerSize.x, containerSize.y);
 	}
 
-	_render(dt) {
+	render() {
 		this._renderer.render(this._scene, this._camera);
 	}
 
-	setCameraPos(pos) {
-		this._camera.position.copy( new Vector3(pos.x, pos.y, pos.z) );
-		this._resize();
+	set cameraPos(cameraPos) {
+		this._camera.position.copy( cameraPos.pos.toThree(cameraPos.zoom) );
+		this.resize(this._containerSize);
+	}
+	get cameraPos() {
+		return new CameraPos(Vector.from(this._camera.position), this._camera.position.z);
 	}
 
-	add(obj) {
-		this._scene.add(obj);
+	get entities() {
+	}
+	get entitiesFlat() {
+	}
+
+	add(entity) {
+		this._entities.push(entity);
+		this._scene.add(sceneEntity.object3D);
 		return obj;
 	}
 
-	remove(obj) {
-		this._scene.remove(obj);
+	remove(entity) {
+		this._entities.remove(entity);
+		this._scene.remove(sceneEntity.object3D);
 	}
 }
