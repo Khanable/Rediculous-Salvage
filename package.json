@@ -11,14 +11,16 @@
     "rxjs": "^6.1.0",
     "style-loader": "^0.21.0",
     "three": "^0.92.0",
-    "webpack": "^4.8.3",
-    "webpack-cli": "^2.1.3",
-    "webpack-dev-server": "^3.1.4"
+    "webpack": "^4.15.1",
+    "webpack-cli": "^3.0.8",
+    "webpack-dev-server": "^3.1.4",
+    "webpack-serve": "^1.0.4"
   },
   "scripts": {
-    "startTest": "webpack-dev-server --env.BUILDTARGET=testDev",
+    "startTest": "webpack-serve --config ./webpack.config.js",
     "startMain": "webpack-dev-server --env.BUILDTARGET=mainDev",
     "startViewer": "webpack-dev-server --env.BUILDTARGET=viewerDev",
+    "buildTest": "webpack --env.BUILDTARGET=testProc",
     "buildMain": "wepback --env.BUILDTARGET=mainProc",
     "buildViewer": "webpack --env.BUILDTARGET=viewerProc"
   }
