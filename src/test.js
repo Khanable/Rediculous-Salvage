@@ -1,19 +1,17 @@
-import { start } from 'qunit';
-import 'qunit/qunit/qunit.css';
+import 'mocha/mocha.js';
+import 'mocha/mocha.css';
+import 'chai/register-assert';
+import 'testEnvironmentSetup.js'
 
-import 'testBinary.js'
-import 'testRandom.js'
-import 'testRender.js'
-import 'testShip.js';
+import 'util/binary.test.js';
+import 'util/random.test.js';
 
-let dom = `
-	<div id='qunit'></div>
-	<div id='qunit-fixture'></div>
-`;
-let parser = new DOMParser();
-let tree = Array.from(parser.parseFromString(dom, 'text/html').body.children);
-tree.forEach( e => document.body.appendChild(e) );
+let entryDiv = document.createElement('div');
+entryDiv.setAttribute('id', 'mocha');
+document.body.appendChild(entryDiv);
 
-
-
-window.addEventListener('load', start);
+function main() {
+	mocha.checkLeaks();
+	mocha.run();
+}
+window.addEventListener('load', main);

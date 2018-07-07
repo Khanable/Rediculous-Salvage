@@ -1,8 +1,8 @@
 import { Engine, World, Bodies, Vertices, Vector, Common } from 'matter-js';
 import { Object3D, LineSegments, BufferGeometry, BufferAttribute, LineBasicMaterial, AxesHelper } from 'three';
-import { Renderer } from 'render.js';
-import { Decorate, IsInited, ToRad } from 'util.js';
-import { AngleBetween, AngleBetweenSigned } from 'vector.js';
+import { Renderer } from 'world/render.js';
+import { Decorate, IsInited, ToRad } from 'util/util.js';
+import { AngleBetween, AngleBetweenSigned } from 'util/vector.js';
 
 export class ShipSettings {
 	constructor() {

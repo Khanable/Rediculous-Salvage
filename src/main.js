@@ -1,7 +1,7 @@
-import { Ship, ShipSettings } from 'ship.js';
-import { RandomFactory } from 'random.js';
-import { Update } from 'update.js';
-import { Renderer } from 'render.js';
+import { Ship, ShipSettings } from 'ship/ship.js';
+import { RandomFactory } from 'util/random.js';
+import { Update } from 'world/update.js';
+import { Renderer } from 'world/render.js';
 import { Vector3 } from 'three';
 
 

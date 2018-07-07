@@ -5,7 +5,14 @@ export class RandomFactory {
 		if ( seed == undefined ) {
 			seed = 0;
 		}
+
+		this._seed = seed;
+
 		this._chance = new Chance(seed);
+	}
+
+	get inspec_seed() {
+		return this._seed;
 	}
 
 	//start inclusive, end inclusive.

@@ -3,7 +3,7 @@ export const GetBits = function(v) {
 	v = parseInt(v);
 	if ( v > 0 ) {
 		let totalBits = Math.floor(Math.log2(v))+1;
-		let rtn = new Array(totalBits).fill(null);
+		let rtn = new Array(totalBits).fill(false);
 		let curBit = totalBits-1;
 		while(curBit >= 0) {
 			let bitValue = Math.pow(2, curBit);
