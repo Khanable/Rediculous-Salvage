@@ -1,6 +1,6 @@
 import { test, module } from 'qunit';
 import { ShipSettings, Ship } from 'ship/ship';
-import { RandomFactory } from 'util/random';
+import { RandomFactory } from 'src/src/util/random';
 
 import { Vector } from 'matter-js';
 

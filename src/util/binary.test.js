@@ -1,6 +1,6 @@
-import { GetBits } from 'util/binary.js';
+import { GetBits } from '/util/binary.js';
 
-describe('util/binary.js', () => {
+describe('/util/binary.js', () => {
 	it('GetBits', () => {
 		assert.deepEqual(GetBits(0), [false]);
 		assert.deepEqual(GetBits(1), [true]);

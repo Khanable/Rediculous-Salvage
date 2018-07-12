@@ -1,6 +1,6 @@
 import { WebGLRenderer, Scene, OrthographicCamera, Object3D } from 'three';
-import { Vector2 } from 'util/vector.js';
-import 'util/array.js';
+import { Vector2 } from 'src/src/util/vector.js';
+import 'src/src/util/array.js';
 
 export class CameraProjection {
 	constructor(left, right, top, bottom, aspect) {

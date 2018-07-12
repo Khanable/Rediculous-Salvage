@@ -1,6 +1,6 @@
-import { RandomFactory } from 'util/random.js';
+import { RandomFactory } from '/util/random.js';
 
-describe('util/random.js', () => {
+describe('/util/random.js', () => {
 
 	describe('RandomFactory', () => {
 

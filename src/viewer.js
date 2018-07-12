@@ -1,12 +1,12 @@
 import { Ship, ShipSettings } from 'ship/ship.js';
-import { RandomFactory } from 'util/random.js';
+import { RandomFactory } from 'src/src/util/random.js';
 import { Update } from 'world/update.js';
 import { Renderer } from 'world/render.js';
 import { Vector3, AxesHelper } from 'three';
 import { CirclesLoader, VerticesLoader, HullLoader, HullEdgesLoader, InternalEdgesLoader, CentreLoader, ForwardLoader, ThrustersLoader } from 'viewer/shipViewerLoaders.js';
 import 'string.js';
-import { StorageGetOrDefault, GetBoolFromStr, GetStrFromBool } from 'util/util.js';
-import { GetBits } from 'util/binary.js';
+import { StorageGetOrDefault, GetBoolFromStr, GetStrFromBool } from 'src/src/util/util.js';
+import { GetBits } from 'src/src/util/binary.js';
 
 
 const storage = window.sessionStorage;

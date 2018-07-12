@@ -1,27 +1,19 @@
 {
   "dependencies": {
-    "chai": "^4.1.2",
     "chance": "^1.0.16",
-    "clean-webpack-plugin": "^0.1.19",
-    "css-loader": "^1.0.0",
-    "html-webpack-plugin": "^3.2.0",
     "matter-js": "^0.14.1",
-    "mocha": "^5.2.0",
     "npm": "^6.1.0",
+    "parcel-bundler": "^1.9.4",
+    "qunit": "^2.6.1",
     "rxjs": "^6.1.0",
-    "style-loader": "^0.21.0",
-    "three": "^0.92.0",
-    "webpack": "^4.15.1",
-    "webpack-cli": "^3.0.8",
-    "webpack-dev-server": "^3.1.4",
-    "webpack-serve": "^1.0.4"
+    "three": "^0.92.0"
   },
   "scripts": {
-    "startTest": "webpack-serve --config ./webpack.config.js",
-    "startMain": "webpack-dev-server --env.BUILDTARGET=mainDev",
-    "startViewer": "webpack-dev-server --env.BUILDTARGET=viewerDev",
-    "buildTest": "webpack --env.BUILDTARGET=testProc",
-    "buildMain": "wepback --env.BUILDTARGET=mainProc",
-    "buildViewer": "webpack --env.BUILDTARGET=viewerProc"
+    "startTest": "parcel serve --no-autoinstall ./src/test.html",
+    "startMain": "parcel serve --no-autoinstall ./src/main.html",
+    "startViewer": "parcel serve --no-autoinstall ./src/viewer.html",
+    "buildTest": "parcel build --no-autoinstall ./src/test.html",
+    "buildMain": "parcel build --no-autoinstall ./src/main.html",
+    "buildViewer": "parcel build --no-autoinstall ./src/viewer.html"
   }
 }

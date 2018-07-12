@@ -1,7 +1,7 @@
 import { test, module } from 'qunit';
 import { Renderer } from 'world/render.js';
 import { Subject } from 'rxjs';
-import { Vector2 } from 'util/vector.js'
+import { Vector2 } from 'src/src/util/vector.js'
 
 module('testRender.js');
 

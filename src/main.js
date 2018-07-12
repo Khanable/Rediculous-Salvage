@@ -1,5 +1,5 @@
 import { Ship, ShipSettings } from 'ship/ship.js';
-import { RandomFactory } from 'util/random.js';
+import { RandomFactory } from 'src/src/util/random.js';
 import { Update } from 'world/update.js';
 import { Renderer } from 'world/render.js';
 import { Vector3 } from 'three';
